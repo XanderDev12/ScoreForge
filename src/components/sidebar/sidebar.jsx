@@ -3,7 +3,13 @@ const NAV_ITEMS = [
   { id: "uploads", label: "Uploads" },
 ];
 
-export function Sidebar({ activeTab, onTabChange, savedScores, uploadedScores }) {
+export function Sidebar({
+  activeTab,
+  onTabChange,
+  savedScores,
+  uploadedScores,
+  onSelectScore,
+}) {
   const sidebarTitle = activeTab === "catalog" ? "Saved Scores" : "Uploaded Scores";
   const sidebarScores = activeTab === "catalog" ? savedScores : uploadedScores;
   const emptyText =
@@ -46,7 +52,11 @@ export function Sidebar({ activeTab, onTabChange, savedScores, uploadedScores })
           <ul className="sidebar-score-list">
             {sidebarScores.map((score) => (
               <li key={score.id}>
-                <button type="button">
+                <button
+                  type="button"
+                  onClick={() => onSelectScore(score)}
+                  aria-label={`Open ${score.songName || "score"} in score viewer`}
+                >
                   <span>{score.songName || "Untitled score"}</span>
                   <small>{score.composer || "Unknown composer"}</small>
                 </button>

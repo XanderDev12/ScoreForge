@@ -59,14 +59,14 @@ export function App() {
       onTabChange={handleTabChange}
       savedScores={savedScores}
       uploadedScores={uploadedScores}
+      onSelectScore={setSelectedScore}
     >
-      {activeTab === "catalog" ? (
-        selectedScore ? (
-          <ScoreViewer
-            score={selectedScore}
-            onBack={() => setSelectedScore(null)}
-          />
-        ) : (
+      {selectedScore ? (
+        <ScoreViewer
+          score={selectedScore}
+          onBack={() => setSelectedScore(null)}
+        />
+      ) : activeTab === "catalog" ? (
           <Catalog
             scores={visibleScores}
             totalScoreCount={scores.length}
@@ -76,7 +76,6 @@ export function App() {
             onToggleSavedScore={handleToggleSavedScore}
             onViewScore={setSelectedScore}
           />
-        )
       ) : (
         <Uploads uploadedScores={uploadedScores} />
       )}

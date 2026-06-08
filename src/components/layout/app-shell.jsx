@@ -10,6 +10,7 @@ export function AppShell({
   onTabChange,
   savedScores,
   uploadedScores,
+  onSelectScore,
   children,
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
@@ -42,6 +43,7 @@ export function AppShell({
         onTabChange={onTabChange}
         savedScores={savedScores}
         uploadedScores={uploadedScores}
+        onSelectScore={onSelectScore}
       />
       <button
         className="sidebar-resize-handle"

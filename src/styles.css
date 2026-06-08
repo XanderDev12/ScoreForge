@@ -440,6 +440,24 @@ select {
   white-space: nowrap;
 }
 
+.rating-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rating-star {
+  color: transparent;
+  background: linear-gradient(
+    90deg,
+    #c5852f var(--rating-fill),
+    rgba(31, 42, 46, 0.22) var(--rating-fill)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
 .score-view-button {
   min-height: 40px;
   padding: 8px 14px;

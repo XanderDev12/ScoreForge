@@ -64,7 +64,9 @@ export function Catalog({
                 </div>
                 <div>
                   <dt>Rating</dt>
-                  <dd>{formatRating(score.popularity?.rating)}</dd>
+                  <dd>
+                    <RatingValue value={score.popularity?.rating} />
+                  </dd>
                 </div>
               </dl>
               <button
@@ -93,4 +95,23 @@ function formatCount(value = 0) {
 
 function formatRating(value = 0) {
   return value > 0 ? value.toFixed(2) : "N/A";
+}
+
+function RatingValue({ value = 0 }) {
+  if (value <= 0) {
+    return "N/A";
+  }
+
+  return (
+    <span className="rating-value">
+      <span>{formatRating(value)}</span>
+      <span
+        className="rating-star"
+        style={{ "--rating-fill": `${Math.min(value / 5, 1) * 100}%` }}
+        aria-hidden="true"
+      >
+        ★
+      </span>
+    </span>
+  );
 }
