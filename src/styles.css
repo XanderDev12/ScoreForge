@@ -219,7 +219,8 @@ select {
 }
 
 .catalog-hero,
-.uploads-hero {
+.uploads-hero,
+.score-viewer-header {
   display: flex;
   align-items: end;
   justify-content: space-between;
@@ -238,12 +239,57 @@ select {
   text-transform: uppercase;
 }
 
-.catalog-hero h1 {
+.catalog-hero h1,
+.score-viewer-header h1,
+.uploads-hero h1 {
   max-width: 720px;
   margin: 0;
   font-size: clamp(2rem, 5vw, 4.2rem);
   font-weight: 800;
   line-height: 1;
+}
+
+.score-viewer-header p {
+  margin: 8px 0 0;
+  color: #526066;
+}
+
+.back-button {
+  margin: 0 0 18px;
+  padding: 8px 12px;
+  border: 1px solid rgba(31, 42, 46, 0.16);
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #1f2a2e;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.back-button:hover {
+  background: rgba(31, 42, 46, 0.06);
+}
+
+.viewer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.viewer-actions a {
+  padding: 8px 12px;
+  border: 1px solid rgba(31, 42, 46, 0.18);
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #1f2a2e;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.viewer-actions a:hover {
+  background: rgba(31, 42, 46, 0.06);
 }
 
 .catalog-summary {
@@ -416,6 +462,43 @@ select {
   color: #526066;
 }
 
+.score-preview {
+  max-width: 1120px;
+  min-height: 70vh;
+  margin: 0 auto;
+  border: 1px solid rgba(31, 42, 46, 0.14);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fffdf8;
+}
+
+.score-preview iframe {
+  display: block;
+  width: 100%;
+  height: 76vh;
+  min-height: 620px;
+  border: 0;
+  background: #fffdf8;
+}
+
+.score-preview-empty {
+  display: grid;
+  min-height: 420px;
+  place-content: center;
+  padding: 32px;
+  text-align: center;
+}
+
+.score-preview-empty h2,
+.score-preview-empty p {
+  margin: 0;
+}
+
+.score-preview-empty p {
+  margin-top: 8px;
+  color: #526066;
+}
+
 .uploads-placeholder {
   padding: 18px 0;
 }
@@ -468,9 +551,19 @@ select {
   }
 
   .catalog-hero,
-  .uploads-hero {
+  .uploads-hero,
+  .score-viewer-header {
     display: block;
     padding-top: 12px;
+  }
+
+  .viewer-actions {
+    justify-content: flex-start;
+    margin-top: 16px;
+  }
+
+  .score-preview iframe {
+    min-height: 520px;
   }
 
   .catalog-summary {

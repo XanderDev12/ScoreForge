@@ -5,6 +5,7 @@ export function Catalog({
   onSearchQueryChange,
   savedScoreIds,
   onToggleSavedScore,
+  onViewScore,
 }) {
   return (
     <main className="catalog-page app-view">
@@ -66,7 +67,11 @@ export function Catalog({
                   <dd>{formatRating(score.popularity?.rating)}</dd>
                 </div>
               </dl>
-              <button className="score-view-button" type="button">
+              <button
+                className="score-view-button"
+                type="button"
+                onClick={() => onViewScore(score)}
+              >
                 View
               </button>
             </article>
