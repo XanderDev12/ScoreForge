@@ -60,6 +60,27 @@ export function ScoreViewer({ score, onBack }) {
     };
   }, [xmlUrl]);
 
+  function handleOptionsResizeStart(event) {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    const startX = event.clientX;
+    const startWidth = optionsWidth;
+
+    function handlePointerMove(moveEvent) {
+      const nextWidth = startWidth - (moveEvent.clientX - startX);
+      setOptionsWidth(clampOptionsWidth(nextWidth));
+    }
+
+    function handlePointerUp() {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp, { once: true });
+  }
+
   return (
     <main className="score-viewer-page app-view">
       <section className="score-viewer-header" aria-labelledby="score-viewer-title">
@@ -136,22 +157,17 @@ export function ScoreViewer({ score, onBack }) {
         </section>
 
         <aside className="score-options-panel" aria-label="Score options">
+          <button
+            className="score-options-resize-handle"
+            type="button"
+            onPointerDown={handleOptionsResizeStart}
+            aria-label="Resize score options panel"
+          />
+
           <div className="score-options-header">
             <p>Options</p>
             <span>Preview tools</span>
           </div>
-
-          <label className="panel-size-control">
-            <span>Panel size</span>
-            <strong>{optionsWidth}px</strong>
-            <input
-              type="range"
-              min="220"
-              max="420"
-              value={optionsWidth}
-              onChange={(event) => setOptionsWidth(Number(event.target.value))}
-            />
-          </label>
 
           <button className="play-sample-button" type="button">
             Play
@@ -183,4 +199,8 @@ function formatCount(value = 0) {
 
 function formatRating(value = 0) {
   return value > 0 ? `${value.toFixed(2)} / 5` : "N/A";
+}
+
+function clampOptionsWidth(width) {
+  return Math.min(420, Math.max(220, width));
 }
