@@ -41,6 +41,11 @@ export function App() {
     setSelectedScore(null);
   }
 
+  function handleSelectScore(score) {
+    setActiveTab("viewer");
+    setSelectedScore(score);
+  }
+
   function handleToggleSavedScore(score) {
     setSavedScores((currentSavedScores) => {
       const isSaved = currentSavedScores.some((savedScore) => savedScore.id === score.id);
@@ -59,12 +64,16 @@ export function App() {
       onTabChange={handleTabChange}
       savedScores={savedScores}
       uploadedScores={uploadedScores}
-      onSelectScore={setSelectedScore}
+      selectedScore={selectedScore}
+      onSelectScore={handleSelectScore}
     >
       {selectedScore ? (
         <ScoreViewer
           score={selectedScore}
-          onBack={() => setSelectedScore(null)}
+          onBack={() => {
+            setSelectedScore(null);
+            setActiveTab("catalog");
+          }}
         />
       ) : activeTab === "catalog" ? (
           <Catalog
@@ -74,7 +83,7 @@ export function App() {
             onSearchQueryChange={setSearchQuery}
             savedScoreIds={savedScoreIds}
             onToggleSavedScore={handleToggleSavedScore}
-            onViewScore={setSelectedScore}
+            onViewScore={handleSelectScore}
           />
       ) : (
         <Uploads uploadedScores={uploadedScores} />

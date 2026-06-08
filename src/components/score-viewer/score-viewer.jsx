@@ -1,9 +1,62 @@
+import { useEffect, useRef, useState } from "react";
 import { getMusicDataUrl } from "../../lib/utils/music-data-url.js";
 
 export function ScoreViewer({ score, onBack }) {
   const pdfUrl = getMusicDataUrl(score.paths?.pdf);
   const xmlUrl = getMusicDataUrl(score.paths?.xml);
   const metadataUrl = getMusicDataUrl(score.paths?.metadata);
+  const osmdContainerRef = useRef(null);
+  const [renderState, setRenderState] = useState("loading");
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function renderScore() {
+      if (!osmdContainerRef.current || !xmlUrl) {
+        setRenderState("error");
+        return;
+      }
+
+      setRenderState("loading");
+      osmdContainerRef.current.innerHTML = "";
+
+      try {
+        const { OpenSheetMusicDisplay } = await import("opensheetmusicdisplay");
+        const osmd = new OpenSheetMusicDisplay(osmdContainerRef.current, {
+          autoResize: true,
+          backend: "svg",
+          drawTitle: false,
+          drawingParameters: "compact",
+        });
+
+        await osmd.load(xmlUrl);
+
+        if (!isActive) {
+          return;
+        }
+
+        osmd.render();
+
+        if (osmdContainerRef.current?.childElementCount) {
+          setRenderState("ready");
+        } else {
+          setRenderState("error");
+        }
+      } catch (error) {
+        console.error("Unable to render score with OSMD", error);
+
+        if (isActive) {
+          setRenderState("error");
+        }
+      }
+    }
+
+    renderScore();
+
+    return () => {
+      isActive = false;
+    };
+  }, [xmlUrl]);
 
   return (
     <main className="score-viewer-page app-view">
@@ -15,6 +68,20 @@ export function ScoreViewer({ score, onBack }) {
           <p className="catalog-kicker">Score Viewer</p>
           <h1 id="score-viewer-title">{score.songName || "Untitled score"}</h1>
           <p>{score.composer || "Unknown composer"}</p>
+          <dl className="score-viewer-details">
+            <div>
+              <dt>Genre</dt>
+              <dd>{score.genre || "Unknown"}</dd>
+            </div>
+            <div>
+              <dt>Views</dt>
+              <dd>{formatCount(score.popularity?.views)}</dd>
+            </div>
+            <div>
+              <dt>Rating</dt>
+              <dd>{formatRating(score.popularity?.rating)}</dd>
+            </div>
+          </dl>
         </div>
 
         <div className="viewer-actions" aria-label="Score file actions">
@@ -37,15 +104,41 @@ export function ScoreViewer({ score, onBack }) {
       </section>
 
       <section className="score-preview" aria-label="Score preview">
-        {pdfUrl ? (
-          <iframe title={`${score.songName || "Score"} PDF preview`} src={pdfUrl} />
-        ) : (
+        <div className="score-title-page">
+          <h2>{score.songName || "Untitled score"}</h2>
+          <p>{score.composer || "Unknown composer"}</p>
+        </div>
+
+        {renderState === "loading" ? (
+          <div className="score-preview-status">Loading interactive score...</div>
+        ) : null}
+
+        <div
+          className={renderState === "ready" ? "osmd-container ready" : "osmd-container"}
+          ref={osmdContainerRef}
+        />
+
+        {renderState === "error" ? (
           <div className="score-preview-empty">
-            <h2>No PDF preview available</h2>
-            <p>This score does not currently have a PDF path to display.</p>
+            <h2>Interactive score unavailable</h2>
+            <p>
+              This score could not be rendered from MusicXML yet. You can still
+              download the source files above.
+            </p>
           </div>
-        )}
+        ) : null}
       </section>
     </main>
   );
+}
+
+function formatCount(value = 0) {
+  return new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function formatRating(value = 0) {
+  return value > 0 ? `${value.toFixed(2)} / 5` : "N/A";
 }

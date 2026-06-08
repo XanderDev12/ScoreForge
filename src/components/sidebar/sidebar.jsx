@@ -8,14 +8,18 @@ export function Sidebar({
   onTabChange,
   savedScores,
   uploadedScores,
+  selectedScore,
   onSelectScore,
 }) {
-  const sidebarTitle = activeTab === "catalog" ? "Saved Scores" : "Uploaded Scores";
-  const sidebarScores = activeTab === "catalog" ? savedScores : uploadedScores;
+  const navItems = selectedScore
+    ? [...NAV_ITEMS, { id: "viewer", label: "Score Viewer" }]
+    : NAV_ITEMS;
+  const sidebarTitle = activeTab === "uploads" ? "Uploaded Scores" : "Saved Scores";
+  const sidebarScores = activeTab === "uploads" ? uploadedScores : savedScores;
   const emptyText =
-    activeTab === "catalog"
-      ? "Saved scores will appear here."
-      : "Uploaded scores will appear here.";
+    activeTab === "uploads"
+      ? "Uploaded scores will appear here."
+      : "Saved scores will appear here.";
 
   return (
     <aside className="sidebar" aria-label="ScoreForge sidebar">
@@ -30,12 +34,19 @@ export function Sidebar({
       </div>
 
       <nav className="sidebar-nav" aria-label="Primary">
-        {NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <button
             className={item.id === activeTab ? "active" : ""}
             key={item.id}
             type="button"
-            onClick={() => onTabChange(item.id)}
+            onClick={() => {
+              if (item.id === "viewer" && selectedScore) {
+                onSelectScore(selectedScore);
+                return;
+              }
+
+              onTabChange(item.id);
+            }}
           >
             {item.label}
           </button>
