@@ -1,6 +1,8 @@
 # System files
 .DS_Store
 Thumbs.db
+MusicData/
+src/data/scores/scores.json
 
 # Editor files
 .idea/
