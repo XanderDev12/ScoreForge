@@ -9,6 +9,8 @@ export function ScoreViewer({ score, onBack }) {
   const [renderState, setRenderState] = useState("loading");
   const [tempo, setTempo] = useState(100);
   const [optionsWidth, setOptionsWidth] = useState(260);
+  const [showNoteLetters, setShowNoteLetters] = useState(false);
+  const [showFingerings, setShowFingerings] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -184,6 +186,29 @@ export function ScoreViewer({ score, onBack }) {
               onChange={(event) => setTempo(Number(event.target.value))}
             />
           </label>
+
+          <label className="viewer-toggle">
+            <input
+              type="checkbox"
+              checked={showNoteLetters}
+              onChange={(event) => setShowNoteLetters(event.target.checked)}
+            />
+            <span>Display note letters</span>
+          </label>
+
+          <label className="viewer-toggle">
+            <input
+              type="checkbox"
+              checked={showFingerings}
+              onChange={(event) => setShowFingerings(event.target.checked)}
+            />
+            <span>Display fingerings</span>
+          </label>
+
+          <p className="viewer-options-note">
+            Note letters and fingerings are layout placeholders for upcoming score
+            annotation features.
+          </p>
         </aside>
       </div>
     </main>
