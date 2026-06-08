@@ -10,7 +10,6 @@ export function AppShell({
   onTabChange,
   savedScores,
   uploadedScores,
-  selectedScore,
   onSelectScore,
   children,
 }) {
@@ -44,7 +43,6 @@ export function AppShell({
         onTabChange={onTabChange}
         savedScores={savedScores}
         uploadedScores={uploadedScores}
-        selectedScore={selectedScore}
         onSelectScore={onSelectScore}
       />
       <button

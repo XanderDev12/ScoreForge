@@ -8,12 +8,8 @@ export function Sidebar({
   onTabChange,
   savedScores,
   uploadedScores,
-  selectedScore,
   onSelectScore,
 }) {
-  const navItems = selectedScore
-    ? [...NAV_ITEMS, { id: "viewer", label: "Score Viewer" }]
-    : NAV_ITEMS;
   const sidebarTitle = activeTab === "uploads" ? "Uploaded Scores" : "Saved Scores";
   const sidebarScores = activeTab === "uploads" ? uploadedScores : savedScores;
   const emptyText =
@@ -34,19 +30,12 @@ export function Sidebar({
       </div>
 
       <nav className="sidebar-nav" aria-label="Primary">
-        {navItems.map((item) => (
+        {NAV_ITEMS.map((item) => (
           <button
             className={item.id === activeTab ? "active" : ""}
             key={item.id}
             type="button"
-            onClick={() => {
-              if (item.id === "viewer" && selectedScore) {
-                onSelectScore(selectedScore);
-                return;
-              }
-
-              onTabChange(item.id);
-            }}
+            onClick={() => onTabChange(item.id)}
           >
             {item.label}
           </button>

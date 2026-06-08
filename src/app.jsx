@@ -42,7 +42,6 @@ export function App() {
   }
 
   function handleSelectScore(score) {
-    setActiveTab("viewer");
     setSelectedScore(score);
   }
 
@@ -64,7 +63,6 @@ export function App() {
       onTabChange={handleTabChange}
       savedScores={savedScores}
       uploadedScores={uploadedScores}
-      selectedScore={selectedScore}
       onSelectScore={handleSelectScore}
     >
       {selectedScore ? (
@@ -72,7 +70,6 @@ export function App() {
           score={selectedScore}
           onBack={() => {
             setSelectedScore(null);
-            setActiveTab("catalog");
           }}
         />
       ) : activeTab === "catalog" ? (

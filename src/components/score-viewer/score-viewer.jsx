@@ -7,6 +7,8 @@ export function ScoreViewer({ score, onBack }) {
   const metadataUrl = getMusicDataUrl(score.paths?.metadata);
   const osmdContainerRef = useRef(null);
   const [renderState, setRenderState] = useState("loading");
+  const [tempo, setTempo] = useState(100);
+  const [optionsWidth, setOptionsWidth] = useState(260);
 
   useEffect(() => {
     let isActive = true;
@@ -103,31 +105,71 @@ export function ScoreViewer({ score, onBack }) {
         </div>
       </section>
 
-      <section className="score-preview" aria-label="Score preview">
-        <div className="score-title-page">
-          <h2>{score.songName || "Untitled score"}</h2>
-          <p>{score.composer || "Unknown composer"}</p>
-        </div>
-
-        {renderState === "loading" ? (
-          <div className="score-preview-status">Loading interactive score...</div>
-        ) : null}
-
-        <div
-          className={renderState === "ready" ? "osmd-container ready" : "osmd-container"}
-          ref={osmdContainerRef}
-        />
-
-        {renderState === "error" ? (
-          <div className="score-preview-empty">
-            <h2>Interactive score unavailable</h2>
-            <p>
-              This score could not be rendered from MusicXML yet. You can still
-              download the source files above.
-            </p>
+      <div
+        className="score-viewer-workspace"
+        style={{ "--score-options-width": `${optionsWidth}px` }}
+      >
+        <section className="score-preview" aria-label="Score preview">
+          <div className="score-title-page">
+            <h2>{score.songName || "Untitled score"}</h2>
+            <p>{score.composer || "Unknown composer"}</p>
           </div>
-        ) : null}
-      </section>
+
+          {renderState === "loading" ? (
+            <div className="score-preview-status">Loading interactive score...</div>
+          ) : null}
+
+          <div
+            className={renderState === "ready" ? "osmd-container ready" : "osmd-container"}
+            ref={osmdContainerRef}
+          />
+
+          {renderState === "error" ? (
+            <div className="score-preview-empty">
+              <h2>Interactive score unavailable</h2>
+              <p>
+                This score could not be rendered from MusicXML yet. You can still
+                download the source files above.
+              </p>
+            </div>
+          ) : null}
+        </section>
+
+        <aside className="score-options-panel" aria-label="Score options">
+          <div className="score-options-header">
+            <p>Options</p>
+            <span>Preview tools</span>
+          </div>
+
+          <label className="panel-size-control">
+            <span>Panel size</span>
+            <strong>{optionsWidth}px</strong>
+            <input
+              type="range"
+              min="220"
+              max="420"
+              value={optionsWidth}
+              onChange={(event) => setOptionsWidth(Number(event.target.value))}
+            />
+          </label>
+
+          <button className="play-sample-button" type="button">
+            Play
+          </button>
+
+          <label className="tempo-control">
+            <span>Tempo</span>
+            <strong>{tempo}%</strong>
+            <input
+              type="range"
+              min="25"
+              max="400"
+              value={tempo}
+              onChange={(event) => setTempo(Number(event.target.value))}
+            />
+          </label>
+        </aside>
+      </div>
     </main>
   );
 }

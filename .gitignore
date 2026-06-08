@@ -3,6 +3,7 @@
 Thumbs.db
 MusicData/
 src/data/scores/scores.json
+docs/conversation-log.md
 
 # Editor files
 .idea/
