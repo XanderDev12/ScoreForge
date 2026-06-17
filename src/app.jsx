@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Catalog } from "./components/catalog/catalog.jsx";
 import { AppShell } from "./components/layout/app-shell.jsx";
+import { Learn } from "./components/learn/learn.jsx";
 import { ScoreViewer } from "./components/score-viewer/score-viewer.jsx";
 import { Uploads } from "./components/uploads/uploads.jsx";
 import scores from "./data/scores/scores.json";
@@ -41,6 +42,16 @@ export function App() {
     setSelectedScore(null);
   }
 
+  function handleHome() {
+    setActiveTab("catalog");
+    setSelectedScore(null);
+  }
+
+  function handleSearchSubmit() {
+    setActiveTab("catalog");
+    setSelectedScore(null);
+  }
+
   function handleSelectScore(score) {
     setSelectedScore(score);
   }
@@ -61,7 +72,11 @@ export function App() {
     <AppShell
       activeTab={activeTab}
       onTabChange={handleTabChange}
+      onHome={handleHome}
       savedScores={savedScores}
+      searchQuery={searchQuery}
+      onSearchQueryChange={setSearchQuery}
+      onSearchSubmit={handleSearchSubmit}
       uploadedScores={uploadedScores}
       onSelectScore={handleSelectScore}
     >
@@ -73,15 +88,15 @@ export function App() {
           }}
         />
       ) : activeTab === "catalog" ? (
-          <Catalog
-            scores={visibleScores}
-            totalScoreCount={scores.length}
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            savedScoreIds={savedScoreIds}
-            onToggleSavedScore={handleToggleSavedScore}
-            onViewScore={handleSelectScore}
-          />
+        <Catalog
+          scores={visibleScores}
+          totalScoreCount={scores.length}
+          savedScoreIds={savedScoreIds}
+          onToggleSavedScore={handleToggleSavedScore}
+          onViewScore={handleSelectScore}
+        />
+      ) : activeTab === "learn" ? (
+        <Learn />
       ) : (
         <Uploads uploadedScores={uploadedScores} />
       )}

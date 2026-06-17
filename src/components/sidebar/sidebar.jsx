@@ -1,54 +1,74 @@
-const NAV_ITEMS = [
-  { id: "catalog", label: "Catalog" },
-  { id: "uploads", label: "Uploads" },
+import scoreforgeLogo from "../../assets/scoreforge-logo-1.png";
+
+const LEARN_ACTIVITY_PLACEHOLDERS = [
+  {
+    id: "intervals-practice",
+    title: "Interval practice",
+    detail: "Last opened lesson",
+  },
+  {
+    id: "sight-reading",
+    title: "Sight-reading warmup",
+    detail: "In progress",
+  },
 ];
 
 export function Sidebar({
   activeTab,
-  onTabChange,
   savedScores,
   uploadedScores,
+  onHome,
   onSelectScore,
 }) {
-  const sidebarTitle = activeTab === "uploads" ? "Uploaded Scores" : "Saved Scores";
-  const sidebarScores = activeTab === "uploads" ? uploadedScores : savedScores;
-  const emptyText =
-    activeTab === "uploads"
-      ? "Uploaded scores will appear here."
-      : "Saved scores will appear here.";
+  const isForgeTab = activeTab === "uploads";
+  const isLearnTab = activeTab === "learn";
+  const sidebarTitle = isLearnTab
+    ? "Recent Learning"
+    : isForgeTab
+      ? "Forged Scores"
+      : "Saved Scores";
+  const sidebarScores = isForgeTab ? uploadedScores : savedScores;
+  const emptyText = isForgeTab
+    ? "Forged scores will appear here."
+    : "Saved scores will appear here.";
 
   return (
     <aside className="sidebar" aria-label="ScoreForge sidebar">
-      <div className="sidebar-brand">
-        <span className="brand-mark" aria-hidden="true">
-          SF
-        </span>
+      <button
+        className="sidebar-brand"
+        type="button"
+        onClick={onHome}
+        aria-label="Go to ScoreForge catalog"
+      >
+        <img className="brand-mark" src={scoreforgeLogo} alt="" aria-hidden="true" />
         <div>
           <p>ScoreForge</p>
           <span>Sheet music workspace</span>
         </div>
-      </div>
-
-      <nav className="sidebar-nav" aria-label="Primary">
-        {NAV_ITEMS.map((item) => (
-          <button
-            className={item.id === activeTab ? "active" : ""}
-            key={item.id}
-            type="button"
-            onClick={() => onTabChange(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
+      </button>
 
       <section className="sidebar-section" aria-labelledby="sidebar-list-title">
         <div className="sidebar-section-header">
           <h2 id="sidebar-list-title">{sidebarTitle}</h2>
-          <span>{sidebarScores.length}</span>
+          <span>
+            {isLearnTab
+              ? LEARN_ACTIVITY_PLACEHOLDERS.length
+              : sidebarScores.length}
+          </span>
         </div>
 
-        {sidebarScores.length > 0 ? (
+        {isLearnTab ? (
+          <ul className="sidebar-score-list sidebar-activity-list">
+            {LEARN_ACTIVITY_PLACEHOLDERS.map((activity) => (
+              <li key={activity.id}>
+                <div className="sidebar-activity-preview">
+                  <span>{activity.title}</span>
+                  <small>{activity.detail}</small>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : sidebarScores.length > 0 ? (
           <ul className="sidebar-score-list">
             {sidebarScores.map((score) => (
               <li key={score.id}>

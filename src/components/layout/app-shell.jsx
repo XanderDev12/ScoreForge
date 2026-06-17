@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Sidebar } from "../sidebar/sidebar.jsx";
+import { TopBar } from "./top-bar.jsx";
 
 const DEFAULT_SIDEBAR_WIDTH = 280;
 const MIN_SIDEBAR_WIDTH = 220;
@@ -8,7 +9,11 @@ const MAX_SIDEBAR_WIDTH = 440;
 export function AppShell({
   activeTab,
   onTabChange,
+  onHome,
   savedScores,
+  searchQuery,
+  onSearchQueryChange,
+  onSearchSubmit,
   uploadedScores,
   onSelectScore,
   children,
@@ -19,6 +24,7 @@ export function AppShell({
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
 
+    const resizeHandle = event.currentTarget;
     const startX = event.clientX;
     const startWidth = sidebarWidth;
 
@@ -27,7 +33,11 @@ export function AppShell({
       setSidebarWidth(clampSidebarWidth(nextWidth));
     }
 
-    function handlePointerUp() {
+    function handlePointerUp(upEvent) {
+      if (resizeHandle.hasPointerCapture(upEvent.pointerId)) {
+        resizeHandle.releasePointerCapture(upEvent.pointerId);
+      }
+
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     }
@@ -40,9 +50,9 @@ export function AppShell({
     <div className="app-shell" style={{ "--sidebar-width": `${sidebarWidth}px` }}>
       <Sidebar
         activeTab={activeTab}
-        onTabChange={onTabChange}
         savedScores={savedScores}
         uploadedScores={uploadedScores}
+        onHome={onHome}
         onSelectScore={onSelectScore}
       />
       <button
@@ -51,7 +61,16 @@ export function AppShell({
         onPointerDown={handleResizeStart}
         aria-label="Resize sidebar"
       />
-      <div className="app-content">{children}</div>
+      <div className="app-main">
+        <TopBar
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          searchQuery={searchQuery}
+          onSearchQueryChange={onSearchQueryChange}
+          onSearchSubmit={onSearchSubmit}
+        />
+        <div className="app-content">{children}</div>
+      </div>
     </div>
   );
 }

@@ -1,8 +1,6 @@
 export function Catalog({
   scores,
   totalScoreCount,
-  searchQuery,
-  onSearchQueryChange,
   savedScoreIds,
   onToggleSavedScore,
   onViewScore,
@@ -17,18 +15,6 @@ export function Catalog({
         <p className="catalog-summary">
           {scores.length.toLocaleString()} of {totalScoreCount.toLocaleString()} scores sorted by popularity
         </p>
-      </section>
-
-      <section className="catalog-tools" aria-label="Catalog tools">
-        <label className="catalog-search">
-          <span>Search catalog</span>
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(event) => onSearchQueryChange(event.target.value)}
-            placeholder="Search score names or composers"
-          />
-        </label>
       </section>
 
       <section className="score-list" aria-label="Popular scores">

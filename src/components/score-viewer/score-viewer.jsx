@@ -1,17 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { getMusicDataUrl } from "../../lib/utils/music-data-url.js";
-import { NoteLetterOverlay } from "./note-letter-overlay.jsx";
 
 export function ScoreViewer({ score, onBack }) {
   const pdfUrl = getMusicDataUrl(score.paths?.pdf);
   const xmlUrl = getMusicDataUrl(score.paths?.xml);
   const metadataUrl = getMusicDataUrl(score.paths?.metadata);
   const osmdContainerRef = useRef(null);
-  const [osmdInstance, setOsmdInstance] = useState(null);
   const [renderState, setRenderState] = useState("loading");
   const [tempo, setTempo] = useState(100);
   const [optionsWidth, setOptionsWidth] = useState(260);
-  const [showNoteLetters, setShowNoteLetters] = useState(false);
   const [showFingerings, setShowFingerings] = useState(false);
 
   useEffect(() => {
@@ -24,7 +21,6 @@ export function ScoreViewer({ score, onBack }) {
       }
 
       setRenderState("loading");
-      setOsmdInstance(null);
       osmdContainerRef.current.innerHTML = "";
 
       try {
@@ -45,7 +41,6 @@ export function ScoreViewer({ score, onBack }) {
         osmd.render();
 
         if (osmdContainerRef.current?.childElementCount) {
-          setOsmdInstance(osmd);
           setRenderState("ready");
         } else {
           setRenderState("error");
@@ -63,7 +58,6 @@ export function ScoreViewer({ score, onBack }) {
 
     return () => {
       isActive = false;
-      setOsmdInstance(null);
     };
   }, [xmlUrl]);
 
@@ -71,6 +65,7 @@ export function ScoreViewer({ score, onBack }) {
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
 
+    const resizeHandle = event.currentTarget;
     const startX = event.clientX;
     const startWidth = optionsWidth;
 
@@ -79,7 +74,11 @@ export function ScoreViewer({ score, onBack }) {
       setOptionsWidth(clampOptionsWidth(nextWidth));
     }
 
-    function handlePointerUp() {
+    function handlePointerUp(upEvent) {
+      if (resizeHandle.hasPointerCapture(upEvent.pointerId)) {
+        resizeHandle.releasePointerCapture(upEvent.pointerId);
+      }
+
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     }
@@ -151,11 +150,6 @@ export function ScoreViewer({ score, onBack }) {
             className={renderState === "ready" ? "osmd-container ready" : "osmd-container"}
             ref={osmdContainerRef}
           />
-          <NoteLetterOverlay
-            container={osmdContainerRef.current}
-            enabled={renderState === "ready" && showNoteLetters}
-            osmd={osmdInstance}
-          />
 
           {renderState === "error" ? (
             <div className="score-preview-empty">
@@ -200,15 +194,6 @@ export function ScoreViewer({ score, onBack }) {
           <label className="viewer-toggle">
             <input
               type="checkbox"
-              checked={showNoteLetters}
-              onChange={(event) => setShowNoteLetters(event.target.checked)}
-            />
-            <span>Display note letters</span>
-          </label>
-
-          <label className="viewer-toggle">
-            <input
-              type="checkbox"
               checked={showFingerings}
               onChange={(event) => setShowFingerings(event.target.checked)}
             />
@@ -216,8 +201,8 @@ export function ScoreViewer({ score, onBack }) {
           </label>
 
           <p className="viewer-options-note">
-            Note letters and fingerings are layout placeholders for upcoming score
-            annotation features.
+            Fingerings are a layout placeholder for upcoming score annotation
+            features.
           </p>
         </aside>
       </div>
