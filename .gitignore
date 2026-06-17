@@ -18,6 +18,7 @@ docs/conversation-log.md
 
 # Logs
 *.log
+agent.md
 logs/
 
 # Dependencies and build output

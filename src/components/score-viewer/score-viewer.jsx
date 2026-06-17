@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { getMusicDataUrl } from "../../lib/utils/music-data-url.js";
+import { NoteLetterOverlay } from "./note-letter-overlay.jsx";
 
 export function ScoreViewer({ score, onBack }) {
   const pdfUrl = getMusicDataUrl(score.paths?.pdf);
   const xmlUrl = getMusicDataUrl(score.paths?.xml);
   const metadataUrl = getMusicDataUrl(score.paths?.metadata);
   const osmdContainerRef = useRef(null);
+  const [osmdInstance, setOsmdInstance] = useState(null);
   const [renderState, setRenderState] = useState("loading");
   const [tempo, setTempo] = useState(100);
   const [optionsWidth, setOptionsWidth] = useState(260);
@@ -22,6 +24,7 @@ export function ScoreViewer({ score, onBack }) {
       }
 
       setRenderState("loading");
+      setOsmdInstance(null);
       osmdContainerRef.current.innerHTML = "";
 
       try {
@@ -42,6 +45,7 @@ export function ScoreViewer({ score, onBack }) {
         osmd.render();
 
         if (osmdContainerRef.current?.childElementCount) {
+          setOsmdInstance(osmd);
           setRenderState("ready");
         } else {
           setRenderState("error");
@@ -59,6 +63,7 @@ export function ScoreViewer({ score, onBack }) {
 
     return () => {
       isActive = false;
+      setOsmdInstance(null);
     };
   }, [xmlUrl]);
 
@@ -145,6 +150,11 @@ export function ScoreViewer({ score, onBack }) {
           <div
             className={renderState === "ready" ? "osmd-container ready" : "osmd-container"}
             ref={osmdContainerRef}
+          />
+          <NoteLetterOverlay
+            container={osmdContainerRef.current}
+            enabled={renderState === "ready" && showNoteLetters}
+            osmd={osmdInstance}
           />
 
           {renderState === "error" ? (
