@@ -1,3 +1,5 @@
+import { formatScoreDifficulty } from "../../lib/scores/score-difficulty.js";
+
 export function Catalog({
   scores,
   totalScoreCount,
@@ -53,6 +55,10 @@ export function Catalog({
                   <dd>
                     <RatingValue value={score.popularity?.rating} />
                   </dd>
+                </div>
+                <div>
+                  <dt>Difficulty</dt>
+                  <dd>{formatScoreDifficulty(score)}</dd>
                 </div>
               </dl>
               <button

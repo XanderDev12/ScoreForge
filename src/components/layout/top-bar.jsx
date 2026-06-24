@@ -1,3 +1,5 @@
+import scoreforgeLogo from "../../assets/scoreforge-logo-1.png";
+
 const NAV_ITEMS = [
   { id: "catalog", label: "Catalog" },
   { id: "uploads", label: "Forge" },
@@ -6,10 +8,12 @@ const NAV_ITEMS = [
 
 export function TopBar({
   activeTab,
+  onHome,
   onSearchQueryChange,
   onSearchSubmit,
   onTabChange,
   searchQuery,
+  showHomeBrand,
 }) {
   function handleSearchSubmit(event) {
     event.preventDefault();
@@ -18,6 +22,18 @@ export function TopBar({
 
   return (
     <header className="top-bar">
+      {showHomeBrand ? (
+        <button
+          className="top-bar-brand"
+          type="button"
+          onClick={onHome}
+          aria-label="Go to ScoreForge home"
+        >
+          <img className="brand-mark" src={scoreforgeLogo} alt="" aria-hidden="true" />
+          <span>ScoreForge</span>
+        </button>
+      ) : null}
+
       <form className="top-bar-search" onSubmit={handleSearchSubmit} role="search">
         <label htmlFor="catalog-search">Search catalog</label>
         <input

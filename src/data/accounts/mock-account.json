@@ -1,0 +1,31 @@
+{
+  "id": "mock-user-001",
+  "isSignedIn": true,
+  "displayName": "Avery",
+  "username": "avery-scoreforge",
+  "profile": {
+    "skillLevel": "intermediate",
+    "primaryInstrument": "piano",
+    "instruments": ["piano", "violin"],
+    "preferredGenres": ["classical", "romantic", "baroque"],
+    "practiceGoals": ["sight-reading", "left-hand independence", "tempo control"]
+  },
+  "library": {
+    "savedScoreIds": [],
+    "recentlyViewedScoreIds": [
+      "QmbHzrXuDGNG3HyzLpeBNeZ9wAj4bTDGWsZ5xz56abM8D8",
+      "QmQivFenf7PzC4UiXgYbzx3G11yvQaCXWeuwvTDMMpr6Nk",
+      "QmYE1PgciP8F1iDxLFHiSyAXYFMxhZMeizejwUXZBggFwN"
+    ],
+    "uploadedScoreIds": []
+  },
+  "recommendations": {
+    "includePopularScores": true,
+    "preferPlayableDifficulty": true,
+    "excludedScoreIds": []
+  },
+  "timestamps": {
+    "createdAt": "2026-06-17T00:00:00.000Z",
+    "lastSignedInAt": "2026-06-17T00:00:00.000Z"
+  }
+}

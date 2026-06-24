@@ -38,7 +38,7 @@ export function Sidebar({
         className="sidebar-brand"
         type="button"
         onClick={onHome}
-        aria-label="Go to ScoreForge catalog"
+        aria-label="Go to ScoreForge home"
       >
         <img className="brand-mark" src={scoreforgeLogo} alt="" aria-hidden="true" />
         <div>

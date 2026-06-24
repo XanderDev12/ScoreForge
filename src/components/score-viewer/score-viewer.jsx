@@ -1,18 +1,33 @@
 import { useEffect, useRef, useState } from "react";
+import { ScoreSampler } from "../sampler/score-sampler.jsx";
+import { formatScoreDifficulty } from "../../lib/scores/score-difficulty.js";
+import { fetchScoreSource } from "../../lib/scores/fetch-score-source.js";
+import { sanitizeMusicXml } from "../../lib/scores/sanitize-musicxml.js";
 import { getMusicDataUrl } from "../../lib/utils/music-data-url.js";
+import { useScorePlaybackCursor } from "./use-score-playback-cursor.js";
 
 export function ScoreViewer({ score, onBack }) {
   const pdfUrl = getMusicDataUrl(score.paths?.pdf);
   const xmlUrl = getMusicDataUrl(score.paths?.xml);
   const metadataUrl = getMusicDataUrl(score.paths?.metadata);
   const osmdContainerRef = useRef(null);
+  const [osmdInstance, setOsmdInstance] = useState(null);
+  const [playback, setPlayback] = useState({
+    duration: 0,
+    position: 0,
+    status: "loading",
+    timing: null,
+  });
   const [renderState, setRenderState] = useState("loading");
-  const [tempo, setTempo] = useState(100);
   const [optionsWidth, setOptionsWidth] = useState(260);
   const [showFingerings, setShowFingerings] = useState(false);
 
+  useScorePlaybackCursor(osmdInstance, playback);
+
   useEffect(() => {
     let isActive = true;
+    let osmd;
+    const controller = new AbortController();
 
     async function renderScore() {
       if (!osmdContainerRef.current || !xmlUrl) {
@@ -21,18 +36,31 @@ export function ScoreViewer({ score, onBack }) {
       }
 
       setRenderState("loading");
+      setOsmdInstance(null);
       osmdContainerRef.current.innerHTML = "";
 
       try {
         const { OpenSheetMusicDisplay } = await import("opensheetmusicdisplay");
-        const osmd = new OpenSheetMusicDisplay(osmdContainerRef.current, {
+        osmd = new OpenSheetMusicDisplay(osmdContainerRef.current, {
           autoResize: true,
           backend: "svg",
+          cursorsOptions: [
+            { alpha: 0.88, color: "#b27a2b", follow: false, type: 1 },
+          ],
           drawTitle: false,
           drawingParameters: "compact",
+          onXMLRead: sanitizeMusicXml,
+        });
+        const source = await fetchScoreSource(xmlUrl, {
+          signal: controller.signal,
+        });
+        const sourceBlob = new Blob([source.data], {
+          type: source.isCompressed
+            ? "application/vnd.recordare.musicxml"
+            : "application/xml",
         });
 
-        await osmd.load(xmlUrl);
+        await osmd.load(sourceBlob);
 
         if (!isActive) {
           return;
@@ -41,11 +69,16 @@ export function ScoreViewer({ score, onBack }) {
         osmd.render();
 
         if (osmdContainerRef.current?.childElementCount) {
+          setOsmdInstance(osmd);
           setRenderState("ready");
         } else {
           setRenderState("error");
         }
       } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
         console.error("Unable to render score with OSMD", error);
 
         if (isActive) {
@@ -58,6 +91,12 @@ export function ScoreViewer({ score, onBack }) {
 
     return () => {
       isActive = false;
+      controller.abort();
+
+      if (osmd) {
+        osmd.AutoResizeEnabled = false;
+        osmd.clear();
+      }
     };
   }, [xmlUrl]);
 
@@ -109,6 +148,10 @@ export function ScoreViewer({ score, onBack }) {
             <div>
               <dt>Rating</dt>
               <dd>{formatRating(score.popularity?.rating)}</dd>
+            </div>
+            <div>
+              <dt>Difficulty</dt>
+              <dd>{formatScoreDifficulty(score)}</dd>
             </div>
           </dl>
         </div>
@@ -175,21 +218,10 @@ export function ScoreViewer({ score, onBack }) {
             <span>Preview tools</span>
           </div>
 
-          <button className="play-sample-button" type="button">
-            Play
-          </button>
-
-          <label className="tempo-control">
-            <span>Tempo</span>
-            <strong>{tempo}%</strong>
-            <input
-              type="range"
-              min="25"
-              max="400"
-              value={tempo}
-              onChange={(event) => setTempo(Number(event.target.value))}
-            />
-          </label>
+          <ScoreSampler
+            musicXmlUrl={xmlUrl}
+            onPlaybackProgress={setPlayback}
+          />
 
           <label className="viewer-toggle">
             <input

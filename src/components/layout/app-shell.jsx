@@ -8,6 +8,7 @@ const MAX_SIDEBAR_WIDTH = 440;
 
 export function AppShell({
   activeTab,
+  isHomeView,
   onTabChange,
   onHome,
   savedScores,
@@ -47,27 +48,36 @@ export function AppShell({
   }
 
   return (
-    <div className="app-shell" style={{ "--sidebar-width": `${sidebarWidth}px` }}>
-      <Sidebar
-        activeTab={activeTab}
-        savedScores={savedScores}
-        uploadedScores={uploadedScores}
-        onHome={onHome}
-        onSelectScore={onSelectScore}
-      />
-      <button
-        className="sidebar-resize-handle"
-        type="button"
-        onPointerDown={handleResizeStart}
-        aria-label="Resize sidebar"
-      />
+    <div
+      className={isHomeView ? "app-shell home-shell" : "app-shell"}
+      style={{ "--sidebar-width": `${sidebarWidth}px` }}
+    >
+      {isHomeView ? null : (
+        <>
+          <Sidebar
+            activeTab={activeTab}
+            savedScores={savedScores}
+            uploadedScores={uploadedScores}
+            onHome={onHome}
+            onSelectScore={onSelectScore}
+          />
+          <button
+            className="sidebar-resize-handle"
+            type="button"
+            onPointerDown={handleResizeStart}
+            aria-label="Resize sidebar"
+          />
+        </>
+      )}
       <div className="app-main">
         <TopBar
           activeTab={activeTab}
+          onHome={onHome}
           onTabChange={onTabChange}
           searchQuery={searchQuery}
           onSearchQueryChange={onSearchQueryChange}
           onSearchSubmit={onSearchSubmit}
+          showHomeBrand={isHomeView}
         />
         <div className="app-content">{children}</div>
       </div>

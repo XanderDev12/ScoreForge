@@ -1,5 +1,5 @@
 import { createReadStream } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline";
 
@@ -14,6 +14,7 @@ const FIELD_NAMES = {
   songName: "song_name",
   composer: "composer_name",
   genre: "genres",
+  complexity: "complexity",
   views: "n_views",
   favorites: "n_favorites",
   rating: "rating",
@@ -64,7 +65,56 @@ async function buildScoreCatalog(inputPath, limit) {
     return secondScore.popularity.views - firstScore.popularity.views;
   });
 
-  return limit === "all" ? sortedScores : sortedScores.slice(0, limit);
+  const requestedScoreCount = limit === "all" ? Number.POSITIVE_INFINITY : limit;
+  return selectLocallyAvailableScores(
+    sortedScores,
+    dirname(inputPath),
+    requestedScoreCount,
+  );
+}
+
+async function selectLocallyAvailableScores(scores, dataRoot, limit) {
+  const availableScores = [];
+  let skippedScores = 0;
+
+  for (const score of scores) {
+    if (await scoreAssetsAreLocal(score, dataRoot)) {
+      availableScores.push(score);
+
+      if (availableScores.length >= limit) {
+        break;
+      }
+    } else {
+      skippedScores += 1;
+    }
+  }
+
+  if (skippedScores > 0) {
+    console.warn(
+      `Skipped ${skippedScores} scores with missing or offloaded local assets`,
+    );
+  }
+
+  return availableScores;
+}
+
+async function scoreAssetsAreLocal(score, dataRoot) {
+  const assetPaths = [score.paths.metadata, score.paths.xml, score.paths.pdf];
+
+  try {
+    const assetStats = await Promise.all(
+      assetPaths.map((assetPath) => {
+        return stat(resolve(dataRoot, assetPath.replace(/^\.\//, "")));
+      }),
+    );
+
+    return assetStats.every((assetStat) => {
+      const hasLocalContent = assetStat.blocks === undefined || assetStat.blocks > 0;
+      return assetStat.isFile() && assetStat.size > 0 && hasLocalContent;
+    });
+  } catch {
+    return false;
+  }
 }
 
 function scoreFromRow(row) {
@@ -81,6 +131,7 @@ function scoreFromRow(row) {
     songName: cleanValue(row[FIELD_NAMES.songName]),
     composer: cleanContributorName(row[FIELD_NAMES.composer]),
     genre: cleanValue(row[FIELD_NAMES.genre]),
+    complexity: parseNullableNumber(row[FIELD_NAMES.complexity]),
     popularity: {
       views: parseNumber(row[FIELD_NAMES.views]),
       favorites: parseNumber(row[FIELD_NAMES.favorites]),
@@ -158,6 +209,11 @@ function createScoreId(xmlPath) {
 function parseNumber(value) {
   const parsedValue = Number.parseFloat(value);
   return Number.isNaN(parsedValue) ? 0 : parsedValue;
+}
+
+function parseNullableNumber(value) {
+  const parsedValue = Number.parseFloat(value);
+  return Number.isNaN(parsedValue) ? null : parsedValue;
 }
 
 function parseArgs(args) {
