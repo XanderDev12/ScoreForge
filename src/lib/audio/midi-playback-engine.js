@@ -1,5 +1,6 @@
+import { createInstrumentSynths } from "./instrument-synth-factory.js";
+
 const DEFAULT_TEMPO_PERCENT = 100;
-const MAX_POLYPHONY = 64;
 const PROGRESS_INTERVAL_MS = 100;
 
 export async function createMidiPlaybackEngine(sequence, callbacks = {}) {
@@ -20,18 +21,7 @@ class MidiPlaybackEngine {
     this.part = null;
     this.progressTimer = null;
     this.transport = Tone.getTransport();
-    this.synth = new Tone.PolySynth(Tone.Synth).toDestination();
-    this.synth.maxPolyphony = MAX_POLYPHONY;
-    this.synth.volume.value = -10;
-    this.synth.set({
-      envelope: {
-        attack: 0.005,
-        decay: 0.25,
-        release: 1.1,
-        sustain: 0.45,
-      },
-      oscillator: { type: "triangle" },
-    });
+    this.synths = createInstrumentSynths(Tone, sequence.instrumentFamilies);
     this.emitProgress();
   }
 
@@ -118,7 +108,8 @@ class MidiPlaybackEngine {
 
   dispose() {
     this.stopSchedule();
-    this.synth.dispose();
+    this.synths.forEach((synth) => synth.dispose());
+    this.synths.clear();
     this.callbacks = {};
     this.state = "disposed";
   }
@@ -132,7 +123,9 @@ class MidiPlaybackEngine {
     this.transport.stop();
     this.transport.seconds = 0;
     this.part = new this.Tone.Part((time, note) => {
-      this.synth.triggerAttackRelease(
+      const synth = this.synths.get(note.instrumentFamily)
+        ?? this.synths.values().next().value;
+      synth?.triggerAttackRelease(
         note.name,
         note.duration / playbackRate,
         time,
@@ -163,7 +156,7 @@ class MidiPlaybackEngine {
     this.part = null;
     this.transport.stop();
     this.transport.cancel();
-    this.synth.releaseAll();
+    this.synths.forEach((synth) => synth.releaseAll());
   }
 
   capturePosition() {

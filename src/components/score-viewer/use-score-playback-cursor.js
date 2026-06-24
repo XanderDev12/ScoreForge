@@ -3,6 +3,8 @@ import { useEffect, useRef } from "react";
 const MAX_CURSOR_STEPS = 20_000;
 const DEFAULT_BPM = 120;
 const QUARTER_NOTES_PER_WHOLE_NOTE = 4;
+const CURSOR_VERTICAL_PADDING = 0.5;
+const OSMD_UNIT_IN_PIXELS = 10;
 
 export function useScorePlaybackCursor(osmd, playback) {
   const controllerRef = useRef(null);
@@ -52,7 +54,8 @@ function createCursorController(osmd) {
         timingReference = timing;
       }
 
-      const targetStep = findCursorStep(resolvedTimeline, position);
+      const targetTimelineIndex = findCursorStep(resolvedTimeline, position);
+      const targetStep = scoreTimeline[targetTimelineIndex]?.cursorStep ?? 0;
 
       if (targetStep < currentStep) {
         cursor.reset();
@@ -69,6 +72,7 @@ function createCursorController(osmd) {
       } else {
         cursor.show();
         cursor.update();
+        stretchCursorAcrossSystem(osmd, cursor);
       }
     },
   };
@@ -81,6 +85,7 @@ function createCursorTimeline(cursor) {
   let previousBpm = DEFAULT_BPM;
   let previousTimestamp = null;
   let stagnantSteps = 0;
+  let cursorStep = 0;
 
   while (!iterator.EndReached && timeline.length < MAX_CURSOR_STEPS) {
     const scoreTimestamp = iterator.CurrentEnrolledTimestamp?.RealValue
@@ -92,12 +97,18 @@ function createCursorTimeline(cursor) {
       elapsedSeconds += wholeNotesToSeconds(scoreDelta, previousBpm);
     }
 
-    timeline.push({
-      estimatedSeconds: elapsedSeconds,
-      scoreTimestamp: Number.isFinite(scoreTimestamp)
-        ? scoreTimestamp
-        : previousTimestamp ?? 0,
-    });
+    const normalizedTimestamp = Number.isFinite(scoreTimestamp)
+      ? scoreTimestamp
+      : previousTimestamp ?? 0;
+    const previousEntry = timeline[timeline.length - 1];
+
+    if (!previousEntry || normalizedTimestamp > previousEntry.scoreTimestamp) {
+      timeline.push({
+        cursorStep,
+        estimatedSeconds: elapsedSeconds,
+        scoreTimestamp: normalizedTimestamp,
+      });
+    }
     previousTimestamp = Number.isFinite(scoreTimestamp)
       ? scoreTimestamp
       : previousTimestamp;
@@ -109,6 +120,7 @@ function createCursorTimeline(cursor) {
       iterator.CurrentSourceTimestamp?.RealValue,
     ].join(":");
     iterator.moveToNextVisibleVoiceEntry(false);
+    cursorStep += 1;
 
     const nextSignature = [
       iterator.CurrentMeasureIndex,
@@ -125,7 +137,7 @@ function createCursorTimeline(cursor) {
   }
 
   if (timeline.length === 0) {
-    return [{ estimatedSeconds: 0, scoreTimestamp: 0 }];
+    return [{ cursorStep: 0, estimatedSeconds: 0, scoreTimestamp: 0 }];
   }
 
   return timeline;
@@ -215,4 +227,35 @@ function ticksToSeconds(ticks, tempos, ppq) {
 
   const elapsedTicks = Math.max(0, ticks - activeTempo.ticks);
   return activeTempo.time + (elapsedTicks / ppq) * (60 / activeTempo.bpm);
+}
+
+function stretchCursorAcrossSystem(osmd, cursor) {
+  const graphicalNote = cursor.GNotesUnderCursor()[0];
+  const musicSystem = graphicalNote
+    ?.parentVoiceEntry
+    ?.parentStaffEntry
+    ?.parentMeasure
+    ?.ParentMusicSystem;
+  const visibleStaffLines = musicSystem?.StaffLines?.filter((staffLine) => {
+    return staffLine.ParentStaff?.isVisible?.() !== false;
+  });
+
+  if (!musicSystem || !visibleStaffLines?.length) {
+    return;
+  }
+
+  const firstStaffLine = visibleStaffLines[0];
+  const lastStaffLine = visibleStaffLines[visibleStaffLines.length - 1];
+  const systemY = musicSystem.PositionAndShape.AbsolutePosition.y;
+  const top = systemY
+    + firstStaffLine.PositionAndShape.RelativePosition.y
+    - CURSOR_VERTICAL_PADDING;
+  const bottom = systemY
+    + lastStaffLine.PositionAndShape.RelativePosition.y
+    + lastStaffLine.StaffHeight
+    + CURSOR_VERTICAL_PADDING;
+  const scale = OSMD_UNIT_IN_PIXELS * osmd.Zoom;
+
+  cursor.cursorElement.style.top = `${top * scale}px`;
+  cursor.cursorElement.height = Math.max(scale, (bottom - top) * scale);
 }

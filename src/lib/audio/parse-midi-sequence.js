@@ -9,22 +9,25 @@ const SUSTAIN_DOWN_THRESHOLD = 0.5;
 const midiPackage = midiModule.default ?? midiModule;
 const Midi = midiModule.Midi ?? midiPackage?.Midi;
 
-export function parseMidiSequence(midiData) {
+export function parseMidiSequence(midiData, { instrumentHints = [] } = {}) {
   if (!Midi) {
     throw new Error("MIDI parser is unavailable");
   }
 
   const midi = new Midi(midiData);
+  const instrumentFamilies = new Set();
   const notes = [];
   let sustainEventCount = 0;
 
-  for (const track of midi.tracks) {
+  for (const [trackIndex, track] of midi.tracks.entries()) {
+    const instrumentFamily = getInstrumentFamily(track, trackIndex, instrumentHints);
+    instrumentFamilies.add(instrumentFamily);
     const sustainEvents = getSustainEvents(track);
     const sustainIntervals = getSustainIntervals(sustainEvents, midi.duration);
     sustainEventCount += sustainEvents.length;
 
     for (const note of track.notes) {
-      notes.push(toPlaybackNote(note, sustainIntervals));
+      notes.push(toPlaybackNote(note, sustainIntervals, instrumentFamily));
 
       if (notes.length > MAX_MIDI_NOTES) {
         throw new Error("Score contains too many notes to play safely");
@@ -43,6 +46,7 @@ export function parseMidiSequence(midiData) {
 
   return {
     duration,
+    instrumentFamilies: [...instrumentFamilies],
     notes,
     sustainEventCount,
     timing: {
@@ -90,7 +94,7 @@ function getSustainIntervals(events, scoreDuration) {
   return intervals;
 }
 
-function toPlaybackNote(note, sustainIntervals) {
+function toPlaybackNote(note, sustainIntervals, instrumentFamily) {
   const noteEnd = note.time + note.duration;
   const sustainInterval = findSustainInterval(sustainIntervals, noteEnd);
   const sustainedEnd = sustainInterval?.end ?? noteEnd;
@@ -100,10 +104,30 @@ function toPlaybackNote(note, sustainIntervals) {
       0.02,
       Math.min(sustainedEnd - note.time, MAX_SUSTAINED_NOTE_SECONDS),
     ),
+    instrumentFamily,
     name: note.name,
     time: note.time,
     velocity: clamp(note.velocity, 0.05, 1),
   };
+}
+
+function getInstrumentFamily(track, trackIndex, instrumentHints) {
+  if (track.instrument?.percussion) {
+    return "percussion";
+  }
+
+  const midiFamily = track.instrument?.family?.trim().toLowerCase();
+
+  if (midiFamily && midiFamily !== "piano") {
+    return midiFamily;
+  }
+
+  const channelHint = instrumentHints.find((hint) => {
+    return hint.family && hint.channel === track.channel;
+  });
+  const positionalHint = instrumentHints[trackIndex];
+
+  return channelHint?.family || positionalHint?.family || midiFamily || "piano";
 }
 
 function findSustainInterval(intervals, time) {

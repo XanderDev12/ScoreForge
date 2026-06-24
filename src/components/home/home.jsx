@@ -1,4 +1,4 @@
-import { formatScoreDifficulty } from "../../lib/scores/score-difficulty.js";
+import { ScoreCard } from "../scores/score-card.jsx";
 
 export function Home({
   account,
@@ -62,23 +62,13 @@ function HomeScoreSection({ emptyText, heading, onViewScore, scores }) {
       </div>
 
       {scores.length > 0 ? (
-        <div className="home-score-grid">
+        <div className="score-card-grid">
           {scores.map((score) => (
-            <article className="home-score-card" key={score.id}>
-              <div>
-                <p>{score.genre || "Sheet music"}</p>
-                <h3>{score.songName || "Untitled score"}</h3>
-                <span>{score.composer || "Unknown composer"}</span>
-              </div>
-              <div className="home-score-card-footer">
-                <small>
-                  {formatScoreDifficulty(score)} · {formatViews(score.popularity?.views)} views
-                </small>
-                <button type="button" onClick={() => onViewScore(score)}>
-                  View
-                </button>
-              </div>
-            </article>
+            <ScoreCard
+              key={score.id}
+              onViewScore={onViewScore}
+              score={score}
+            />
           ))}
         </div>
       ) : (
@@ -96,13 +86,6 @@ function getSignedInSummary({ primaryInstrument, skillLevel }) {
   }
 
   return `Your ${profileParts.join(" ")} workspace is ready for recent scores and recommendations.`;
-}
-
-function formatViews(value = 0) {
-  return new Intl.NumberFormat("en", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
 }
 
 function toId(value) {
