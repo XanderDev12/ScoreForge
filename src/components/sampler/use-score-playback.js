@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createMidiPlaybackEngine } from "../../lib/audio/midi-playback-engine.js";
 import { loadScoreMusicXml } from "../../lib/audio/load-score-musicxml.js";
+import { scoreTimestampToPlaybackSeconds } from "../../lib/audio/score-timing.js";
 
 export function useScorePlayback(musicXmlUrl, tempoPercent) {
   const abortControllerRef = useRef(null);
@@ -84,6 +85,26 @@ export function useScorePlayback(musicXmlUrl, tempoPercent) {
     try {
       const engine = await getOrCreateEngine();
       engine?.seekBy(offsetSeconds);
+    } catch (playbackError) {
+      handlePlaybackError(playbackError, playbackVersion);
+    }
+  }
+
+  async function seekToScoreTimestamp(scoreTimestamp) {
+    const playbackVersion = loadVersionRef.current;
+
+    try {
+      const engine = await getOrCreateEngine();
+      const sequence = sequenceRef.current;
+
+      if (engine && sequence) {
+        engine.seekTo(
+          scoreTimestampToPlaybackSeconds(
+            scoreTimestamp,
+            sequence.timing,
+          ),
+        );
+      }
     } catch (playbackError) {
       handlePlaybackError(playbackError, playbackVersion);
     }
@@ -209,6 +230,7 @@ export function useScorePlayback(musicXmlUrl, tempoPercent) {
     error,
     position,
     seekBy,
+    seekToScoreTimestamp,
     status,
     timing,
     togglePlayback,

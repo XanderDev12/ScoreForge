@@ -1580,7 +1580,7 @@ select {
 .score-viewer-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--score-options-width, 260px);
-  align-items: stretch;
+  align-items: start;
   gap: 18px;
   max-width: 1400px;
   margin: 0 auto;
@@ -1613,11 +1613,14 @@ select {
 
 .score-options-panel {
   position: sticky;
-  top: 32px;
+  top: 92px;
   display: grid;
   align-content: start;
   gap: 16px;
-  min-height: calc(100vh - 64px);
+  max-height: calc(100vh - 110px);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px;
   border: 1px solid rgba(36, 31, 27, 0.18);
   border-radius: 8px;
@@ -1814,6 +1817,10 @@ select {
   opacity: 1;
 }
 
+.osmd-container.ready svg {
+  cursor: pointer;
+}
+
 .osmd-container svg {
   max-width: 100%;
   height: auto;
@@ -1955,7 +1962,9 @@ select {
 
   .score-options-panel {
     position: static;
+    max-height: none;
     min-height: auto;
+    overflow-y: visible;
     order: -1;
   }
 }

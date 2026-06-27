@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useScorePlayback } from "./use-score-playback.js";
 
-export function ScoreSampler({ musicXmlUrl, onPlaybackProgress }) {
+export function ScoreSampler({ musicXmlUrl, onPlaybackProgress, seekRequest }) {
   const [tempoPercent, setTempoPercent] = useState(100);
   const {
     duration,
@@ -9,6 +9,7 @@ export function ScoreSampler({ musicXmlUrl, onPlaybackProgress }) {
     position,
     status,
     seekBy,
+    seekToScoreTimestamp,
     timing,
     togglePlayback,
   } = useScorePlayback(musicXmlUrl, tempoPercent);
@@ -19,6 +20,12 @@ export function ScoreSampler({ musicXmlUrl, onPlaybackProgress }) {
   useEffect(() => {
     onPlaybackProgress?.({ duration, position, status, timing });
   }, [duration, onPlaybackProgress, position, status, timing]);
+
+  useEffect(() => {
+    if (seekRequest) {
+      seekToScoreTimestamp(seekRequest.scoreTimestamp);
+    }
+  }, [seekRequest]);
 
   return (
     <section className="score-sampler" aria-label="Score playback">

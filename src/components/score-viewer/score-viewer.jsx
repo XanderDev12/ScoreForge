@@ -6,6 +6,7 @@ import { formatScoreDifficulty } from "../../lib/scores/score-difficulty.js";
 import { fetchScoreSource } from "../../lib/scores/fetch-score-source.js";
 import { sanitizeMusicXml } from "../../lib/scores/sanitize-musicxml.js";
 import { getMusicDataUrl } from "../../lib/utils/music-data-url.js";
+import { getClickedScoreTimestamp } from "./get-clicked-score-timestamp.js";
 import { useScorePlaybackCursor } from "./use-score-playback-cursor.js";
 
 const SCORE_RENDER_WIDTH = 730;
@@ -22,6 +23,7 @@ export function ScoreViewer({
 }) {
   const xmlUrl = getMusicDataUrl(score.paths?.xml);
   const osmdContainerRef = useRef(null);
+  const seekRequestIdRef = useRef(0);
   const [osmdInstance, setOsmdInstance] = useState(null);
   const [playback, setPlayback] = useState({
     duration: 0,
@@ -32,6 +34,7 @@ export function ScoreViewer({
   const [renderState, setRenderState] = useState("loading");
   const [optionsWidth, setOptionsWidth] = useState(260);
   const [showFingerings, setShowFingerings] = useState(false);
+  const [seekRequest, setSeekRequest] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [actionError, setActionError] = useState("");
 
@@ -172,6 +175,28 @@ export function ScoreViewer({
     }
   }
 
+  function handleScoreClick(event) {
+    if (!osmdInstance || !osmdContainerRef.current) {
+      return;
+    }
+
+    const scoreTimestamp = getClickedScoreTimestamp({
+      container: osmdContainerRef.current,
+      event,
+      osmd: osmdInstance,
+    });
+
+    if (scoreTimestamp === null) {
+      return;
+    }
+
+    seekRequestIdRef.current += 1;
+    setSeekRequest({
+      id: seekRequestIdRef.current,
+      scoreTimestamp,
+    });
+  }
+
   return (
     <main className="score-viewer-page app-view">
       <section className="score-viewer-header" aria-labelledby="score-viewer-title">
@@ -249,6 +274,7 @@ export function ScoreViewer({
           <div
             className={renderState === "ready" ? "osmd-container ready" : "osmd-container"}
             ref={osmdContainerRef}
+            onClick={handleScoreClick}
           />
 
           {renderState === "error" ? (
@@ -278,6 +304,7 @@ export function ScoreViewer({
           <ScoreSampler
             musicXmlUrl={xmlUrl}
             onPlaybackProgress={setPlayback}
+            seekRequest={seekRequest}
           />
 
           <label className="viewer-toggle">

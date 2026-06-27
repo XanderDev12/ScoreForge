@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { resolveScoreTimeline } from "../../lib/audio/score-timing.js";
 
 const MAX_CURSOR_STEPS = 20_000;
 const DEFAULT_BPM = 120;
@@ -50,7 +51,7 @@ function createCursorController(osmd) {
       }
 
       if (timing && timing !== timingReference) {
-        resolvedTimeline = resolveMidiTimeline(scoreTimeline, timing);
+        resolvedTimeline = resolveScoreTimeline(scoreTimeline, timing);
         timingReference = timing;
       }
 
@@ -168,66 +169,6 @@ function wholeNotesToSeconds(wholeNotes, bpm) {
 
 function normalizeBpm(bpm, fallbackBpm) {
   return Number.isFinite(bpm) && bpm > 0 ? bpm : fallbackBpm;
-}
-
-function resolveMidiTimeline(scoreTimeline, timing) {
-  const ppq = Number(timing.ppq);
-
-  if (!Number.isFinite(ppq) || ppq <= 0) {
-    return scoreTimeline.map((entry) => entry.estimatedSeconds);
-  }
-
-  const firstTimestamp = scoreTimeline[0]?.scoreTimestamp ?? 0;
-  const tempos = normalizeTempos(timing.tempos, ppq);
-
-  return scoreTimeline.map((entry) => {
-    const wholeNotes = Math.max(0, entry.scoreTimestamp - firstTimestamp);
-    const ticks = wholeNotes * QUARTER_NOTES_PER_WHOLE_NOTE * ppq;
-    return ticksToSeconds(ticks, tempos, ppq);
-  });
-}
-
-function normalizeTempos(tempos, ppq) {
-  const normalizedTempos = Array.isArray(tempos)
-    ? tempos
-        .filter((tempo) => {
-          return Number.isFinite(tempo.bpm)
-            && tempo.bpm > 0
-            && Number.isFinite(tempo.ticks);
-        })
-        .sort((firstTempo, secondTempo) => firstTempo.ticks - secondTempo.ticks)
-    : [];
-
-  if (normalizedTempos.length === 0 || normalizedTempos[0].ticks > 0) {
-    normalizedTempos.unshift({ bpm: DEFAULT_BPM, ticks: 0 });
-  }
-
-  let currentTime = 0;
-
-  return normalizedTempos.map((tempo, index) => {
-    if (index > 0) {
-      const previousTempo = normalizedTempos[index - 1];
-      const elapsedTicks = tempo.ticks - previousTempo.ticks;
-      currentTime += (elapsedTicks / ppq) * (60 / previousTempo.bpm);
-    }
-
-    return { ...tempo, time: currentTime };
-  });
-}
-
-function ticksToSeconds(ticks, tempos, ppq) {
-  let activeTempo = tempos[0];
-
-  for (let index = 1; index < tempos.length; index += 1) {
-    if (tempos[index].ticks > ticks) {
-      break;
-    }
-
-    activeTempo = tempos[index];
-  }
-
-  const elapsedTicks = Math.max(0, ticks - activeTempo.ticks);
-  return activeTempo.time + (elapsedTicks / ppq) * (60 / activeTempo.bpm);
 }
 
 function stretchCursorAcrossSystem(osmd, cursor) {
