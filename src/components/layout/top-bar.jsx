@@ -1,3 +1,4 @@
+import { useState } from "react";
 import scoreforgeLogo from "../../assets/scoreforge-logo-1.png";
 
 const NAV_ITEMS = [
@@ -9,15 +10,31 @@ const NAV_ITEMS = [
 export function TopBar({
   activeTab,
   onHome,
+  onOpenAuth,
   onSearchQueryChange,
   onSearchSubmit,
+  onSignOut,
   onTabChange,
+  profile,
   searchQuery,
   showHomeBrand,
+  user,
 }) {
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+
   function handleSearchSubmit(event) {
     event.preventDefault();
     onSearchSubmit();
+  }
+
+  function handleAccountAction(mode) {
+    setIsAccountMenuOpen(false);
+    onOpenAuth(mode);
+  }
+
+  function handleSignOut() {
+    setIsAccountMenuOpen(false);
+    onSignOut();
   }
 
   return (
@@ -58,9 +75,57 @@ export function TopBar({
         ))}
       </nav>
 
-      <div className="profile-button" aria-label="Profile placeholder" role="img">
-        <span aria-hidden="true">SF</span>
+      <div
+        className="profile-menu"
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setIsAccountMenuOpen(false);
+          }
+        }}
+      >
+        <button
+          className="profile-button"
+          type="button"
+          aria-expanded={isAccountMenuOpen}
+          aria-haspopup="menu"
+          aria-label="Open account menu"
+          onClick={() => setIsAccountMenuOpen((isOpen) => !isOpen)}
+        >
+          <span aria-hidden="true">{getAccountInitials({ profile, user })}</span>
+        </button>
+
+        {isAccountMenuOpen ? (
+          <div className="profile-dropdown" role="menu" aria-label="Account actions">
+            {user ? (
+              <>
+                <p>{profile?.display_name || user.email}</p>
+                <button type="button" role="menuitem" onClick={handleSignOut}>
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" role="menuitem" onClick={() => handleAccountAction("sign-in")}>
+                  Sign in
+                </button>
+                <button type="button" role="menuitem" onClick={() => handleAccountAction("sign-up")}>
+                  Sign up
+                </button>
+              </>
+            )}
+          </div>
+        ) : null}
       </div>
     </header>
   );
+}
+
+function getAccountInitials({ profile, user }) {
+  const label = profile?.display_name || user?.email;
+
+  if (!label) {
+    return "SF";
+  }
+
+  return label.slice(0, 2).toUpperCase();
 }

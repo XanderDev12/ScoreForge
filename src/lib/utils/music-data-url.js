@@ -3,5 +3,13 @@ export function getMusicDataUrl(path) {
     return "";
   }
 
+  if (
+    path.startsWith("blob:")
+    || path.startsWith("https://")
+    || path.startsWith("http://")
+  ) {
+    return path;
+  }
+
   return `/MusicData/${path.replace(/^\.\//, "")}`;
 }

@@ -9,6 +9,8 @@ const MAX_SIDEBAR_WIDTH = 440;
 export function AppShell({
   activeTab,
   isHomeView,
+  onOpenAuth,
+  onSignOut,
   onTabChange,
   onHome,
   savedScores,
@@ -17,6 +19,8 @@ export function AppShell({
   onSearchSubmit,
   uploadedScores,
   onSelectScore,
+  profile,
+  user,
   children,
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
@@ -72,12 +76,16 @@ export function AppShell({
       <div className="app-main">
         <TopBar
           activeTab={activeTab}
+          onOpenAuth={onOpenAuth}
           onHome={onHome}
+          onSignOut={onSignOut}
           onTabChange={onTabChange}
           searchQuery={searchQuery}
           onSearchQueryChange={onSearchQueryChange}
           onSearchSubmit={onSearchSubmit}
+          profile={profile}
           showHomeBrand={isHomeView}
+          user={user}
         />
         <div className="app-content">{children}</div>
       </div>

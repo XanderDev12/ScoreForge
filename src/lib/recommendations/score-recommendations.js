@@ -1,18 +1,5 @@
 import { getScoreDifficultyKey } from "../scores/score-difficulty.js";
 
-export function getRecentlyViewedScores(scores, recentlyViewedScoreIds = [], limit = 4) {
-  if (!Array.isArray(scores) || !Array.isArray(recentlyViewedScoreIds)) {
-    return [];
-  }
-
-  const scoresById = new Map(scores.map((score) => [score.id, score]));
-
-  return recentlyViewedScoreIds
-    .map((scoreId) => scoresById.get(scoreId))
-    .filter(Boolean)
-    .slice(0, limit);
-}
-
 export function getRecommendedScores({ account, excludeScoreIds = [], limit = 6, scores }) {
   if (!Array.isArray(scores)) {
     return [];

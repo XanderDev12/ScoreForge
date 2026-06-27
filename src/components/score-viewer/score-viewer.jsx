@@ -6,7 +6,9 @@ import { sanitizeMusicXml } from "../../lib/scores/sanitize-musicxml.js";
 import { getMusicDataUrl } from "../../lib/utils/music-data-url.js";
 import { useScorePlaybackCursor } from "./use-score-playback-cursor.js";
 
-export function ScoreViewer({ score, onBack }) {
+const SCORE_RENDER_WIDTH = 730;
+
+export function ScoreViewer({ backLabel = "Back to catalog", score, onBack }) {
   const pdfUrl = getMusicDataUrl(score.paths?.pdf);
   const xmlUrl = getMusicDataUrl(score.paths?.xml);
   const metadataUrl = getMusicDataUrl(score.paths?.metadata);
@@ -27,6 +29,7 @@ export function ScoreViewer({ score, onBack }) {
   useEffect(() => {
     let isActive = true;
     let osmd;
+    let stopDecoratingPages = () => {};
     const controller = new AbortController();
 
     async function renderScore() {
@@ -38,17 +41,22 @@ export function ScoreViewer({ score, onBack }) {
       setRenderState("loading");
       setOsmdInstance(null);
       osmdContainerRef.current.innerHTML = "";
+      osmdContainerRef.current.style.width = `${SCORE_RENDER_WIDTH}px`;
 
       try {
         const { OpenSheetMusicDisplay } = await import("opensheetmusicdisplay");
         osmd = new OpenSheetMusicDisplay(osmdContainerRef.current, {
-          autoResize: true,
+          autoResize: false,
           backend: "svg",
           cursorsOptions: [
             { alpha: 0.88, color: "#b27a2b", follow: false, type: 1 },
           ],
-          drawTitle: false,
+          drawComposer: true,
+          drawCredits: false,
+          drawSubtitle: true,
+          drawTitle: true,
           drawingParameters: "compact",
+          pageFormat: "A4_P",
           onXMLRead: sanitizeMusicXml,
         });
         const source = await fetchScoreSource(xmlUrl, {
@@ -67,6 +75,8 @@ export function ScoreViewer({ score, onBack }) {
         }
 
         osmd.render();
+        osmdContainerRef.current.style.width = "100%";
+        stopDecoratingPages = decorateRenderedPages(osmdContainerRef.current);
 
         if (osmdContainerRef.current?.childElementCount) {
           setOsmdInstance(osmd);
@@ -82,6 +92,7 @@ export function ScoreViewer({ score, onBack }) {
         console.error("Unable to render score with OSMD", error);
 
         if (isActive) {
+          osmdContainerRef.current.style.width = "100%";
           setRenderState("error");
         }
       }
@@ -92,10 +103,15 @@ export function ScoreViewer({ score, onBack }) {
     return () => {
       isActive = false;
       controller.abort();
+      stopDecoratingPages();
 
       if (osmd) {
         osmd.AutoResizeEnabled = false;
         osmd.clear();
+      }
+
+      if (osmdContainerRef.current) {
+        osmdContainerRef.current.style.width = "";
       }
     };
   }, [xmlUrl]);
@@ -131,7 +147,7 @@ export function ScoreViewer({ score, onBack }) {
       <section className="score-viewer-header" aria-labelledby="score-viewer-title">
         <div>
           <button className="back-button" type="button" onClick={onBack}>
-            Back to catalog
+            {backLabel}
           </button>
           <p className="catalog-kicker">Score Viewer</p>
           <h1 id="score-viewer-title">{score.songName || "Untitled score"}</h1>
@@ -163,7 +179,7 @@ export function ScoreViewer({ score, onBack }) {
             </a>
           ) : null}
           {xmlUrl ? (
-            <a href={xmlUrl} download>
+            <a href={xmlUrl} download={score.upload?.fileName || true}>
               MusicXML
             </a>
           ) : null}
@@ -180,11 +196,6 @@ export function ScoreViewer({ score, onBack }) {
         style={{ "--score-options-width": `${optionsWidth}px` }}
       >
         <section className="score-preview" aria-label="Score preview">
-          <div className="score-title-page">
-            <h2>{score.songName || "Untitled score"}</h2>
-            <p>{score.composer || "Unknown composer"}</p>
-          </div>
-
           {renderState === "loading" ? (
             <div className="score-preview-status">Loading interactive score...</div>
           ) : null}
@@ -255,4 +266,28 @@ function formatRating(value = 0) {
 
 function clampOptionsWidth(width) {
   return Math.min(420, Math.max(220, width));
+}
+
+function decorateRenderedPages(container) {
+  const pages = container?.querySelectorAll('[id^="osmdCanvasPage"]') ?? [];
+
+  pages.forEach((page, index) => {
+    page.classList.add("score-sheet-page");
+    page.dataset.pageNumber = String(index + 1);
+  });
+
+  function resizePages() {
+    const scale = Math.min(1, container.clientWidth / SCORE_RENDER_WIDTH);
+
+    pages.forEach((page) => {
+      page.style.zoom = String(scale);
+    });
+  }
+
+  resizePages();
+
+  const observer = new ResizeObserver(resizePages);
+  observer.observe(container);
+
+  return () => observer.disconnect();
 }

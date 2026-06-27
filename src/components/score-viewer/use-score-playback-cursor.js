@@ -70,6 +70,7 @@ function createCursorController(osmd) {
       if (status === "ready" && position === 0) {
         cursor.hide();
       } else {
+        cursor.updateCurrentPage();
         cursor.show();
         cursor.update();
         stretchCursorAcrossSystem(osmd, cursor);
