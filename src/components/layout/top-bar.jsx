@@ -10,7 +10,7 @@ const NAV_ITEMS = [
 export function TopBar({
   activeTab,
   onHome,
-  onOpenAuth,
+  onOpenAccount,
   onSearchQueryChange,
   onSearchSubmit,
   onSignOut,
@@ -29,7 +29,7 @@ export function TopBar({
 
   function handleAccountAction(mode) {
     setIsAccountMenuOpen(false);
-    onOpenAuth(mode);
+    onOpenAccount(mode);
   }
 
   function handleSignOut() {
@@ -99,6 +99,13 @@ export function TopBar({
             {user ? (
               <>
                 <p>{profile?.display_name || user.email}</p>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => handleAccountAction("settings")}
+                >
+                  Settings
+                </button>
                 <button type="button" role="menuitem" onClick={handleSignOut}>
                   Sign out
                 </button>

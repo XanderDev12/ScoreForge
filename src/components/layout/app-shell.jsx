@@ -9,11 +9,14 @@ const MAX_SIDEBAR_WIDTH = 440;
 export function AppShell({
   activeTab,
   isHomeView,
-  onOpenAuth,
+  onOpenAccount,
   onSignOut,
   onTabChange,
   onHome,
+  onToggleSavedScore,
+  pendingSavedScoreIds,
   savedScores,
+  savedScoresError,
   searchQuery,
   onSearchQueryChange,
   onSearchSubmit,
@@ -64,6 +67,9 @@ export function AppShell({
             uploadedScores={uploadedScores}
             onHome={onHome}
             onSelectScore={onSelectScore}
+            onToggleSavedScore={onToggleSavedScore}
+            pendingSavedScoreIds={pendingSavedScoreIds}
+            savedScoresError={savedScoresError}
           />
           <button
             className="sidebar-resize-handle"
@@ -76,7 +82,7 @@ export function AppShell({
       <div className="app-main">
         <TopBar
           activeTab={activeTab}
-          onOpenAuth={onOpenAuth}
+          onOpenAccount={onOpenAccount}
           onHome={onHome}
           onSignOut={onSignOut}
           onTabChange={onTabChange}

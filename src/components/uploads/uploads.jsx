@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
+import { ScoreDownloadMenu } from "../scores/score-download-menu.jsx";
 
 export function Uploads({
   forgeError,
@@ -121,6 +123,7 @@ export function Uploads({
                   <p>{score.composer}</p>
                 </div>
                 <div className="forge-score-actions">
+                  <ScoreDownloadMenu score={score} />
                   <button
                     type="button"
                     disabled={Boolean(deletingScoreId)}
@@ -133,8 +136,14 @@ export function Uploads({
                     type="button"
                     disabled={Boolean(deletingScoreId)}
                     onClick={() => handleDelete(score)}
+                    aria-label={
+                      deletingScoreId === score.id
+                        ? `Deleting ${score.songName || "score"}`
+                        : `Delete ${score.songName || "score"}`
+                    }
+                    title={`Delete ${score.songName || "score"}`}
                   >
-                    {deletingScoreId === score.id ? "Deleting..." : "Delete"}
+                    <Trash2 aria-hidden="true" size={18} strokeWidth={2} />
                   </button>
                 </div>
               </article>

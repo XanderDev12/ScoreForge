@@ -1,43 +1,25 @@
 import { useState } from "react";
 import { savePendingProfile, upsertProfile } from "../../lib/supabase/profiles.js";
 import { supabase } from "../../lib/supabase/supabase-client.js";
+import {
+  createProfileValues,
+  INSTRUMENT_OPTIONS,
+  ProfileFields,
+} from "./profile-fields.jsx";
 
-const SKILL_LEVELS = [
-  { label: "Beginner", value: "beginner" },
-  { label: "Intermediate", value: "intermediate" },
-  { label: "Advanced", value: "advanced" },
-];
-
-const INSTRUMENT_OPTIONS = [
-  "Piano",
-  "Violin",
-  "Viola",
-  "Cello",
-  "Guitar",
-  "Voice",
-  "Flute",
-  "Clarinet",
-  "Trumpet",
-  "Percussion",
-];
-
-const GENRE_OPTIONS = [
-  "Baroque",
-  "Classical",
-  "Romantic",
-  "Modern",
-  "Folk",
-  "Jazz",
-  "Sacred",
-  "Opera",
-  "Chamber",
-  "Orchestral",
+const SIGN_UP_STEPS = [
+  { id: "email", label: "Email" },
+  { id: "password", label: "Password" },
+  { id: "confirm", label: "Confirm" },
+  { id: "profile", label: "Profile" },
 ];
 
 export function AuthDialog({ mode, onClose }) {
   const [authMode, setAuthMode] = useState(mode);
+  const [signUpStep, setSignUpStep] = useState(0);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [primaryInstrument, setPrimaryInstrument] = useState(INSTRUMENT_OPTIONS[0]);
   const [skillLevel, setSkillLevel] = useState("beginner");
@@ -47,51 +29,57 @@ export function AuthDialog({ mode, onClose }) {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSignUp = authMode === "sign-up";
+  const isComplete = isSignUp && Boolean(message);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
     setMessage("");
-    setIsSubmitting(true);
 
-    const profileDraft = createProfileDraft({
-      displayName,
-      email,
-      instruments,
-      preferredGenres,
-      primaryInstrument,
-      skillLevel,
-    });
+    if (isSignUp && signUpStep < SIGN_UP_STEPS.length - 1) {
+      if (signUpStep === 2 && password !== passwordConfirmation) {
+        setError("Passwords do not match.");
+        return;
+      }
 
-    if (isSignUp) {
-      savePendingProfile(email, profileDraft);
-    }
-
-    const authRequest = isSignUp
-      ? supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              display_name: profileDraft.display_name,
-              instruments: profileDraft.instruments,
-              preferred_genres: profileDraft.preferred_genres,
-              primary_instrument: profileDraft.primary_instrument,
-              skill_level: profileDraft.skill_level,
-            },
-          },
-        })
-      : supabase.auth.signInWithPassword({ email, password });
-
-    const { data, error: authError } = await authRequest;
-
-    if (authError) {
-      setIsSubmitting(false);
-      setError(authError.message);
+      setSignUpStep((currentStep) => currentStep + 1);
       return;
     }
 
+    setIsSubmitting(true);
+
     if (isSignUp) {
+      const profileDraft = createProfileValues({
+        displayName,
+        fallbackDisplayName: email.split("@")[0],
+        instruments,
+        preferredGenres,
+        primaryInstrument,
+        skillLevel,
+      });
+
+      savePendingProfile(email, profileDraft);
+
+      const { data, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: profileDraft.display_name,
+            instruments: profileDraft.instruments,
+            preferred_genres: profileDraft.preferred_genres,
+            primary_instrument: profileDraft.primary_instrument,
+            skill_level: profileDraft.skill_level,
+          },
+        },
+      });
+
+      if (authError) {
+        setIsSubmitting(false);
+        setError(authError.message);
+        return;
+      }
+
       if (data.session?.user) {
         try {
           await upsertProfile({
@@ -114,14 +102,44 @@ export function AuthDialog({ mode, onClose }) {
       return;
     }
 
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError) {
+      setIsSubmitting(false);
+      setError(authError.message);
+      return;
+    }
+
     setIsSubmitting(false);
     onClose();
+  }
+
+  function changeAuthMode() {
+    setAuthMode(isSignUp ? "sign-in" : "sign-up");
+    setSignUpStep(0);
+    setPassword("");
+    setPasswordConfirmation("");
+    setError("");
+    setMessage("");
+  }
+
+  function goToPreviousStep() {
+    setSignUpStep((currentStep) => Math.max(0, currentStep - 1));
+    setError("");
+    setMessage("");
   }
 
   return (
     <div className="auth-dialog-backdrop" role="presentation">
       <section
-        className="auth-dialog"
+        className={
+          isSignUp && signUpStep === SIGN_UP_STEPS.length - 1
+            ? "auth-dialog profile-step"
+            : "auth-dialog"
+        }
         aria-labelledby="auth-dialog-title"
         aria-modal="true"
         role="dialog"
@@ -136,114 +154,104 @@ export function AuthDialog({ mode, onClose }) {
           </button>
         </div>
 
+        {isSignUp ? (
+          <nav className="auth-step-navigation" aria-label="Sign-up progress">
+            <ol>
+              {SIGN_UP_STEPS.map((step, index) => (
+                <li
+                  className={index <= signUpStep ? "active" : ""}
+                  key={step.id}
+                >
+                  <button
+                    aria-current={index === signUpStep ? "step" : undefined}
+                    disabled={index > signUpStep || isSubmitting || isComplete}
+                    type="button"
+                    onClick={() => {
+                      setSignUpStep(index);
+                      setError("");
+                      setMessage("");
+                    }}
+                  >
+                    <span>{index + 1}</span>
+                    {step.label}
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        ) : null}
+
         <form className="auth-form" onSubmit={handleSubmit}>
-          <label>
-            Email
-            <input
-              autoComplete="email"
-              required
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </label>
-
-          <label>
-            Password
-            <input
-              autoComplete={isSignUp ? "new-password" : "current-password"}
-              minLength={6}
-              required
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
-
-          {isSignUp ? (
-            <div className="auth-profile-fields" aria-label="Profile details">
+          {!isSignUp ? (
+            <>
               <label>
-                Display name
+                Email
                 <input
-                  autoComplete="nickname"
+                  autoComplete="email"
                   required
-                  type="text"
-                  value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value)}
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
                 />
               </label>
 
               <label>
-                Primary instrument
-                <select
+                Password
+                <input
+                  autoComplete="current-password"
+                  minLength={6}
                   required
-                  value={primaryInstrument}
-                  onChange={(event) => {
-                    setPrimaryInstrument(event.target.value);
-                    setInstruments((currentInstruments) => {
-                      return currentInstruments.filter((instrument) => {
-                        return instrument !== event.target.value;
-                      });
-                    });
-                  }}
-                >
-                  {INSTRUMENT_OPTIONS.map((instrument) => (
-                    <option key={instrument} value={instrument}>
-                      {instrument}
-                    </option>
-                  ))}
-                </select>
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
               </label>
-
-              <label>
-                Skill level
-                <select
-                  required
-                  value={skillLevel}
-                  onChange={(event) => setSkillLevel(event.target.value)}
-                >
-                  {SKILL_LEVELS.map((level) => (
-                    <option key={level.value} value={level.value}>
-                      {level.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <CheckboxGroup
-                legend="Other instruments"
-                options={INSTRUMENT_OPTIONS.filter((instrument) => {
-                  return instrument !== primaryInstrument;
-                })}
-                selectedValues={instruments}
-                onChange={setInstruments}
-              />
-
-              <CheckboxGroup
-                legend="Preferred genres"
-                options={GENRE_OPTIONS}
-                selectedValues={preferredGenres}
-                onChange={setPreferredGenres}
-              />
-            </div>
-          ) : null}
+            </>
+          ) : (
+            <SignUpStep
+              displayName={displayName}
+              email={email}
+              instruments={instruments}
+              password={password}
+              passwordConfirmation={passwordConfirmation}
+              preferredGenres={preferredGenres}
+              primaryInstrument={primaryInstrument}
+              setDisplayName={setDisplayName}
+              setEmail={setEmail}
+              setInstruments={setInstruments}
+              setPassword={setPassword}
+              setPasswordConfirmation={setPasswordConfirmation}
+              setPreferredGenres={setPreferredGenres}
+              setPrimaryInstrument={setPrimaryInstrument}
+              setSkillLevel={setSkillLevel}
+              signUpStep={signUpStep}
+              skillLevel={skillLevel}
+            />
+          )}
 
           {error ? <p className="auth-error" role="alert">{error}</p> : null}
           {message ? <p className="auth-message" role="status">{message}</p> : null}
 
-          <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Working..." : isSignUp ? "Sign up" : "Sign in"}
-          </button>
+          <div className="auth-form-actions">
+            {isSignUp && signUpStep > 0 ? (
+              <button
+                type="button"
+                disabled={isSubmitting || isComplete}
+                onClick={goToPreviousStep}
+              >
+                Back
+              </button>
+            ) : null}
+            <button type="submit" disabled={isSubmitting || isComplete}>
+              {getSubmitLabel({ isSignUp, isSubmitting, signUpStep })}
+            </button>
+          </div>
         </form>
 
         <button
           className="auth-mode-switch"
           type="button"
-          onClick={() => {
-            setAuthMode(isSignUp ? "sign-in" : "sign-up");
-            setError("");
-            setMessage("");
-          }}
+          onClick={changeAuthMode}
         >
           {isSignUp ? "Already have an account? Sign in" : "Need an account? Sign up"}
         </button>
@@ -252,56 +260,100 @@ export function AuthDialog({ mode, onClose }) {
   );
 }
 
-function CheckboxGroup({ legend, onChange, options, selectedValues }) {
-  return (
-    <fieldset className="auth-checkbox-group">
-      <legend>{legend}</legend>
-      <div>
-        {options.map((option) => (
-          <label key={option}>
-            <input
-              checked={selectedValues.includes(option)}
-              type="checkbox"
-              value={option}
-              onChange={(event) => {
-                onChange(toggleValue(selectedValues, event.target.value, event.target.checked));
-              }}
-            />
-            <span>{option}</span>
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-
-function createProfileDraft({
+function SignUpStep({
   displayName,
   email,
   instruments,
+  password,
+  passwordConfirmation,
   preferredGenres,
   primaryInstrument,
+  setDisplayName,
+  setEmail,
+  setInstruments,
+  setPassword,
+  setPasswordConfirmation,
+  setPreferredGenres,
+  setPrimaryInstrument,
+  setSkillLevel,
+  signUpStep,
   skillLevel,
 }) {
-  const trimmedPrimaryInstrument = primaryInstrument.trim();
-
-  return {
-    display_name: displayName.trim() || email.split("@")[0],
-    primary_instrument: trimmedPrimaryInstrument,
-    skill_level: skillLevel,
-    instruments: uniqueValues([trimmedPrimaryInstrument, ...instruments]),
-    preferred_genres: uniqueValues(preferredGenres),
-  };
-}
-
-function toggleValue(values, value, isSelected) {
-  if (isSelected) {
-    return uniqueValues([...values, value]);
+  if (signUpStep === 0) {
+    return (
+      <label>
+        Email
+        <input
+          autoComplete="email"
+          autoFocus
+          required
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+      </label>
+    );
   }
 
-  return values.filter((currentValue) => currentValue !== value);
+  if (signUpStep === 1) {
+    return (
+      <label>
+        Create password
+        <input
+          autoComplete="new-password"
+          autoFocus
+          minLength={6}
+          required
+          type="password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+      </label>
+    );
+  }
+
+  if (signUpStep === 2) {
+    return (
+      <label>
+        Confirm password
+        <input
+          autoComplete="new-password"
+          autoFocus
+          minLength={6}
+          required
+          type="password"
+          value={passwordConfirmation}
+          onChange={(event) => setPasswordConfirmation(event.target.value)}
+        />
+      </label>
+    );
+  }
+
+  return (
+    <ProfileFields
+      autoFocusDisplayName
+      displayName={displayName}
+      instruments={instruments}
+      preferredGenres={preferredGenres}
+      primaryInstrument={primaryInstrument}
+      setDisplayName={setDisplayName}
+      setInstruments={setInstruments}
+      setPreferredGenres={setPreferredGenres}
+      setPrimaryInstrument={setPrimaryInstrument}
+      setSkillLevel={setSkillLevel}
+      skillLevel={skillLevel}
+    />
+  );
 }
 
-function uniqueValues(values) {
-  return [...new Set(values.filter(Boolean))];
+function getSubmitLabel({ isSignUp, isSubmitting, signUpStep }) {
+  if (isSubmitting) {
+    return "Working...";
+  }
+
+  if (!isSignUp) {
+    return "Sign in";
+  }
+
+  return signUpStep === SIGN_UP_STEPS.length - 1 ? "Create account" : "Continue";
 }

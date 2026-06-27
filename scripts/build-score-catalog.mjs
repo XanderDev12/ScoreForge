@@ -1,5 +1,5 @@
 import { createReadStream } from "node:fs";
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline";
 
@@ -79,7 +79,7 @@ async function selectLocallyAvailableScores(scores, dataRoot, limit) {
 
   for (const score of scores) {
     if (await scoreAssetsAreLocal(score, dataRoot)) {
-      availableScores.push(score);
+      availableScores.push(await addInstrumentMetadata(score, dataRoot));
 
       if (availableScores.length >= limit) {
         break;
@@ -96,6 +96,26 @@ async function selectLocallyAvailableScores(scores, dataRoot, limit) {
   }
 
   return availableScores;
+}
+
+async function addInstrumentMetadata(score, dataRoot) {
+  try {
+    const metadataPath = resolve(
+      dataRoot,
+      score.paths.metadata.replace(/^\.\//, ""),
+    );
+    const metadata = JSON.parse(await readFile(metadataPath, "utf8"));
+    const scoreMetadata = metadata?.data?.score ?? {};
+    const instruments = uniqueStrings([
+      ...(scoreMetadata.instruments ?? []).map((instrument) => instrument?.name),
+      ...(scoreMetadata.parts_names ?? []),
+      ...(metadata?.score?.partNames ?? []),
+    ]);
+
+    return instruments.length > 0 ? { ...score, instruments } : score;
+  } catch {
+    return score;
+  }
 }
 
 async function scoreAssetsAreLocal(score, dataRoot) {
@@ -143,6 +163,15 @@ function scoreFromRow(row) {
       pdf: pdfPath,
     },
   };
+}
+
+function uniqueStrings(values) {
+  return [...new Set(
+    values
+      .filter((value) => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  )];
 }
 
 function rowFromValues(headers, values) {

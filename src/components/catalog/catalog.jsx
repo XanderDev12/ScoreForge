@@ -4,6 +4,8 @@ export function Catalog({
   scores,
   totalScoreCount,
   savedScoreIds,
+  pendingSavedScoreIds,
+  savedScoresError,
   onToggleSavedScore,
   onViewScore,
 }) {
@@ -19,11 +21,16 @@ export function Catalog({
         </p>
       </section>
 
+      {savedScoresError ? (
+        <p className="catalog-save-error" role="alert">{savedScoresError}</p>
+      ) : null}
+
       <section className="score-card-grid catalog-score-grid" aria-label="Popular scores">
         {scores.length > 0 ? (
           scores.map((score) => (
             <ScoreCard
               isSaved={savedScoreIds.has(score.id)}
+              isSavePending={pendingSavedScoreIds.has(score.id)}
               key={score.id}
               onToggleSavedScore={onToggleSavedScore}
               onViewScore={onViewScore}

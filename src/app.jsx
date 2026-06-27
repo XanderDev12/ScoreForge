@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AuthDialog } from "./components/auth/auth-dialog.jsx";
+import { ProfileSettingsDialog } from "./components/auth/profile-settings-dialog.jsx";
 import { Catalog } from "./components/catalog/catalog.jsx";
 import { Home } from "./components/home/home.jsx";
 import { AppShell } from "./components/layout/app-shell.jsx";
@@ -9,6 +10,11 @@ import { Uploads } from "./components/uploads/uploads.jsx";
 import scores from "./data/scores/scores.json";
 import { getRecommendedScores } from "./lib/recommendations/score-recommendations.js";
 import { ensureProfileFromUser } from "./lib/supabase/profiles.js";
+import {
+  fetchSavedScoreIds,
+  removeSavedScoreReference,
+  saveScoreReference,
+} from "./lib/supabase/saved-scores.js";
 import { supabase } from "./lib/supabase/supabase-client.js";
 import {
   deleteUserScore,
@@ -18,18 +24,28 @@ import {
 import { createUploadedScore } from "./lib/uploads/create-uploaded-score.js";
 
 const SAVED_SCORES_STORAGE_KEY = "scoreforge:saved-scores";
+const RECENT_SCORES_STORAGE_KEY = "scoreforge:recently-opened-scores";
+const HOME_SCORE_LIMIT = 12;
+const RECENT_SCORE_LIMIT = HOME_SCORE_LIMIT;
+const CATALOG_SCORES_BY_ID = new Map(scores.map((score) => [score.id, score]));
 
 export function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [searchQuery, setSearchQuery] = useState("");
   const [savedScores, setSavedScores] = useState(() => loadSavedScores());
+  const [recentlyViewedScoreIds, setRecentlyViewedScoreIds] = useState(
+    loadRecentlyViewedScoreIds,
+  );
   const [uploadedScores, setUploadedScores] = useState([]);
   const [user, setUser] = useState(null);
+  const [isSessionReady, setIsSessionReady] = useState(false);
   const [profile, setProfile] = useState(null);
-  const [authDialogMode, setAuthDialogMode] = useState(null);
+  const [accountDialogMode, setAccountDialogMode] = useState(null);
   const [forgeStatus, setForgeStatus] = useState("");
   const [forgeError, setForgeError] = useState("");
   const [profileError, setProfileError] = useState("");
+  const [savedScoresError, setSavedScoresError] = useState("");
+  const [pendingSavedScoreIds, setPendingSavedScoreIds] = useState(() => new Set());
   const uploadedObjectUrlsRef = useRef(new Set());
   const [selectedScore, setSelectedScore] = useState(null);
 
@@ -43,10 +59,6 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(SAVED_SCORES_STORAGE_KEY, JSON.stringify(savedScores));
-  }, [savedScores]);
-
-  useEffect(() => {
     let isMounted = true;
 
     async function loadSession() {
@@ -54,6 +66,7 @@ export function App() {
 
       if (isMounted) {
         setUser(data.session?.user ?? null);
+        setIsSessionReady(true);
       }
     }
 
@@ -61,7 +74,8 @@ export function App() {
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      setAuthDialogMode(null);
+      setIsSessionReady(true);
+      setAccountDialogMode(null);
     });
 
     return () => {
@@ -69,6 +83,48 @@ export function App() {
       data.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadSavedScoresForSession() {
+      if (!isSessionReady) {
+        return;
+      }
+
+      setSavedScoresError("");
+
+      if (!user) {
+        setSavedScores(loadSavedScores());
+        return;
+      }
+
+      try {
+        const savedScoreIds = await fetchSavedScoreIds(user.id);
+
+        if (isCurrent) {
+          setSavedScores(
+            savedScoreIds
+              .map((scoreId) => CATALOG_SCORES_BY_ID.get(scoreId))
+              .filter(Boolean),
+          );
+        }
+      } catch (error) {
+        if (isCurrent) {
+          setSavedScores([]);
+          setSavedScoresError(
+            error instanceof Error ? error.message : "Unable to load saved scores.",
+          );
+        }
+      }
+    }
+
+    loadSavedScoresForSession();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isSessionReady, user]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -173,10 +229,17 @@ export function App() {
 
   const recommendedScores = useMemo(() => {
     return getRecommendedScores({
-      account: null,
+      account: user && profile ? { profile } : null,
+      limit: HOME_SCORE_LIMIT,
       scores,
     });
-  }, []);
+  }, [profile, user]);
+
+  const recentlyViewedScores = useMemo(() => {
+    return recentlyViewedScoreIds
+      .map((scoreId) => CATALOG_SCORES_BY_ID.get(scoreId))
+      .filter(Boolean);
+  }, [recentlyViewedScoreIds]);
 
   function handleTabChange(nextTab) {
     setActiveTab(nextTab);
@@ -195,6 +258,21 @@ export function App() {
 
   function handleSelectScore(score) {
     setSelectedScore(score);
+
+    if (CATALOG_SCORES_BY_ID.has(score.id)) {
+      setRecentlyViewedScoreIds((currentScoreIds) => {
+        const nextScoreIds = [
+          score.id,
+          ...currentScoreIds.filter((scoreId) => scoreId !== score.id),
+        ].slice(0, RECENT_SCORE_LIMIT);
+
+        localStorage.setItem(
+          RECENT_SCORES_STORAGE_KEY,
+          JSON.stringify(nextScoreIds),
+        );
+        return nextScoreIds;
+      });
+    }
   }
 
   async function handleUploadScore(file) {
@@ -269,6 +347,9 @@ export function App() {
       setUploadedScores((currentScores) => {
         return currentScores.filter((currentScore) => currentScore.id !== score.id);
       });
+      setSelectedScore((currentScore) => {
+        return currentScore?.id === score.id ? null : currentScore;
+      });
       setForgeStatus("");
     } catch (error) {
       setForgeStatus("");
@@ -277,16 +358,55 @@ export function App() {
     }
   }
 
-  function handleToggleSavedScore(score) {
-    setSavedScores((currentSavedScores) => {
-      const isSaved = currentSavedScores.some((savedScore) => savedScore.id === score.id);
+  async function handleToggleSavedScore(score) {
+    if (pendingSavedScoreIds.has(score.id)) {
+      return;
+    }
 
-      if (isSaved) {
-        return currentSavedScores.filter((savedScore) => savedScore.id !== score.id);
+    const wasSaved = savedScoreIds.has(score.id);
+    const nextSavedScores = wasSaved
+      ? savedScores.filter((savedScore) => savedScore.id !== score.id)
+      : [...savedScores, score];
+
+    setSavedScores(nextSavedScores);
+    setSavedScoresError("");
+
+    if (!user) {
+      localStorage.setItem(
+        SAVED_SCORES_STORAGE_KEY,
+        JSON.stringify(nextSavedScores.map((savedScore) => savedScore.id)),
+      );
+      return;
+    }
+
+    setPendingSavedScoreIds((currentIds) => new Set(currentIds).add(score.id));
+
+    try {
+      if (wasSaved) {
+        await removeSavedScoreReference({ scoreId: score.id, userId: user.id });
+      } else {
+        await saveScoreReference({ scoreId: score.id, userId: user.id });
       }
+    } catch (error) {
+      setSavedScores((currentScores) => {
+        if (wasSaved) {
+          return currentScores.some((savedScore) => savedScore.id === score.id)
+            ? currentScores
+            : [...currentScores, score];
+        }
 
-      return [...currentSavedScores, score];
-    });
+        return currentScores.filter((savedScore) => savedScore.id !== score.id);
+      });
+      setSavedScoresError(
+        error instanceof Error ? error.message : "Unable to update saved scores.",
+      );
+    } finally {
+      setPendingSavedScoreIds((currentIds) => {
+        const nextIds = new Set(currentIds);
+        nextIds.delete(score.id);
+        return nextIds;
+      });
+    }
   }
 
   async function handleSignOut() {
@@ -299,11 +419,14 @@ export function App() {
       <AppShell
         activeTab={activeTab}
         isHomeView={activeTab === "home" && !selectedScore}
-        onOpenAuth={setAuthDialogMode}
+        onOpenAccount={setAccountDialogMode}
         onSignOut={handleSignOut}
         onTabChange={handleTabChange}
         onHome={handleHome}
+        onToggleSavedScore={handleToggleSavedScore}
+        pendingSavedScoreIds={pendingSavedScoreIds}
         savedScores={savedScores}
+        savedScoresError={savedScoresError}
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
         onSearchSubmit={handleSearchSubmit}
@@ -315,6 +438,15 @@ export function App() {
         {selectedScore ? (
           <ScoreViewer
             backLabel={activeTab === "uploads" ? "Back to Forge" : "Back to catalog"}
+            isSaved={savedScoreIds.has(selectedScore.id)}
+            isSavePending={pendingSavedScoreIds.has(selectedScore.id)}
+            onDeleteScore={
+              selectedScore.isUploaded ? handleDeleteUploadedScore : undefined
+            }
+            onToggleSavedScore={
+              selectedScore.isUploaded ? undefined : handleToggleSavedScore
+            }
+            savedScoresError={savedScoresError}
             score={selectedScore}
             onBack={() => {
               setSelectedScore(null);
@@ -325,14 +457,23 @@ export function App() {
             scores={visibleScores}
             totalScoreCount={scores.length}
             savedScoreIds={savedScoreIds}
+            pendingSavedScoreIds={pendingSavedScoreIds}
+            savedScoresError={savedScoresError}
             onToggleSavedScore={handleToggleSavedScore}
             onViewScore={handleSelectScore}
           />
         ) : activeTab === "home" ? (
           <Home
             onViewScore={handleSelectScore}
+            onToggleSavedScore={handleToggleSavedScore}
+            pendingSavedScoreIds={pendingSavedScoreIds}
+            profile={profile}
+            recentlyViewedScores={recentlyViewedScores}
             recommendedScores={recommendedScores}
             onOpenCatalog={() => handleTabChange("catalog")}
+            savedScoreIds={savedScoreIds}
+            savedScoresError={savedScoresError}
+            user={user}
           />
         ) : activeTab === "learn" ? (
           <Learn />
@@ -351,8 +492,21 @@ export function App() {
         )}
       </AppShell>
 
-      {authDialogMode ? (
-        <AuthDialog mode={authDialogMode} onClose={() => setAuthDialogMode(null)} />
+      {accountDialogMode === "settings" && user ? (
+        <ProfileSettingsDialog
+          onClose={() => setAccountDialogMode(null)}
+          onProfileSaved={(updatedProfile) => {
+            setProfile(updatedProfile);
+            setProfileError("");
+          }}
+          profile={profile}
+          user={user}
+        />
+      ) : accountDialogMode ? (
+        <AuthDialog
+          mode={accountDialogMode}
+          onClose={() => setAccountDialogMode(null)}
+        />
       ) : null}
     </>
   );
@@ -381,11 +535,31 @@ function loadSavedScores() {
       return [];
     }
 
-    const catalogScoresById = new Map(scores.map((score) => [score.id, score]));
-
     return savedScores
-      .map((savedScore) => catalogScoresById.get(savedScore.id))
+      .map((savedScore) => {
+        const scoreId = typeof savedScore === "string" ? savedScore : savedScore?.id;
+        return CATALOG_SCORES_BY_ID.get(scoreId);
+      })
       .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function loadRecentlyViewedScoreIds() {
+  try {
+    const scoreIds = JSON.parse(
+      localStorage.getItem(RECENT_SCORES_STORAGE_KEY) ?? "[]",
+    );
+
+    if (!Array.isArray(scoreIds)) {
+      return [];
+    }
+
+    return scoreIds
+      .filter((scoreId) => typeof scoreId === "string")
+      .filter((scoreId) => CATALOG_SCORES_BY_ID.has(scoreId))
+      .slice(0, RECENT_SCORE_LIMIT);
   } catch {
     return [];
   }

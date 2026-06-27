@@ -1,7 +1,9 @@
 import { formatScoreDifficulty } from "../../lib/scores/score-difficulty.js";
+import { ScoreDownloadMenu } from "./score-download-menu.jsx";
 
 export function ScoreCard({
   isSaved = false,
+  isSavePending = false,
   onToggleSavedScore,
   onViewScore,
   score,
@@ -11,6 +13,13 @@ export function ScoreCard({
 
   return (
     <article className="score-card">
+      <button
+        className="score-card-open-overlay"
+        type="button"
+        onClick={() => onViewScore(score)}
+        aria-label={`Open ${scoreName} in score viewer`}
+      />
+
       <div className="score-card-content">
         {showCatalogDetails ? null : (
           <div className="score-card-eyebrow">
@@ -22,20 +31,33 @@ export function ScoreCard({
           <div>
             <h3>{scoreName}</h3>
             <span>{score.composer || "Unknown composer"}</span>
+            {showCatalogDetails ? (
+              <small className="score-card-difficulty">
+                {formatScoreDifficulty(score)}
+              </small>
+            ) : null}
           </div>
         </div>
       </div>
 
-      <div className="score-card-footer">
-        <small>
-          {showCatalogDetails
-            ? <CatalogDetails score={score} />
-            : `${formatScoreDifficulty(score)} · ${formatCount(score.popularity?.views)} views`}
-        </small>
+      <div
+        className={
+          showCatalogDetails
+            ? "score-card-footer actions-only"
+            : "score-card-footer"
+        }
+      >
+        {showCatalogDetails ? null : (
+          <small>
+            {formatScoreDifficulty(score)} · {formatCount(score.popularity?.views)} views
+          </small>
+        )}
         <div className="score-card-actions">
+          <ScoreDownloadMenu score={score} />
           {onToggleSavedScore ? (
             <button
               className={isSaved ? "save-score active" : "save-score"}
+              disabled={isSavePending}
               type="button"
               onClick={() => onToggleSavedScore(score)}
               aria-label={
@@ -48,35 +70,9 @@ export function ScoreCard({
               <span aria-hidden="true" />
             </button>
           ) : null}
-          <button
-            className="score-card-view-button"
-            type="button"
-            onClick={() => onViewScore(score)}
-          >
-            View
-          </button>
         </div>
       </div>
     </article>
-  );
-}
-
-function CatalogDetails({ score }) {
-  const rating = score.popularity?.rating ?? 0;
-
-  return (
-    <>
-      {formatScoreDifficulty(score)} · {rating > 0 ? rating.toFixed(2) : "Not rated"}
-      {rating > 0 ? (
-        <span
-          className="rating-star"
-          style={{ "--rating-fill": `${Math.min(rating / 5, 1) * 100}%` }}
-          aria-hidden="true"
-        >
-          ★
-        </span>
-      ) : null}
-    </>
   );
 }
 

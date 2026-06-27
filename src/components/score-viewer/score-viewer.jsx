@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { ScoreSampler } from "../sampler/score-sampler.jsx";
+import { ScoreDownloadMenu } from "../scores/score-download-menu.jsx";
 import { formatScoreDifficulty } from "../../lib/scores/score-difficulty.js";
 import { fetchScoreSource } from "../../lib/scores/fetch-score-source.js";
 import { sanitizeMusicXml } from "../../lib/scores/sanitize-musicxml.js";
@@ -8,10 +10,17 @@ import { useScorePlaybackCursor } from "./use-score-playback-cursor.js";
 
 const SCORE_RENDER_WIDTH = 730;
 
-export function ScoreViewer({ backLabel = "Back to catalog", score, onBack }) {
-  const pdfUrl = getMusicDataUrl(score.paths?.pdf);
+export function ScoreViewer({
+  backLabel = "Back to catalog",
+  isSaved = false,
+  isSavePending = false,
+  onBack,
+  onDeleteScore,
+  onToggleSavedScore,
+  savedScoresError,
+  score,
+}) {
   const xmlUrl = getMusicDataUrl(score.paths?.xml);
-  const metadataUrl = getMusicDataUrl(score.paths?.metadata);
   const osmdContainerRef = useRef(null);
   const [osmdInstance, setOsmdInstance] = useState(null);
   const [playback, setPlayback] = useState({
@@ -23,6 +32,8 @@ export function ScoreViewer({ backLabel = "Back to catalog", score, onBack }) {
   const [renderState, setRenderState] = useState("loading");
   const [optionsWidth, setOptionsWidth] = useState(260);
   const [showFingerings, setShowFingerings] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   useScorePlaybackCursor(osmdInstance, playback);
 
@@ -142,6 +153,25 @@ export function ScoreViewer({ backLabel = "Back to catalog", score, onBack }) {
     window.addEventListener("pointerup", handlePointerUp, { once: true });
   }
 
+  async function handleDeleteScore() {
+    if (
+      isDeleting
+      || !window.confirm(`Permanently delete "${score.songName || "Untitled score"}"?`)
+    ) {
+      return;
+    }
+
+    setActionError("");
+    setIsDeleting(true);
+
+    try {
+      await onDeleteScore(score);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to delete score.");
+      setIsDeleting(false);
+    }
+  }
+
   return (
     <main className="score-viewer-page app-view">
       <section className="score-viewer-header" aria-labelledby="score-viewer-title">
@@ -173,22 +203,38 @@ export function ScoreViewer({ backLabel = "Back to catalog", score, onBack }) {
         </div>
 
         <div className="viewer-actions" aria-label="Score file actions">
-          {pdfUrl ? (
-            <a href={pdfUrl} download>
-              PDF
-            </a>
+          {onToggleSavedScore ? (
+            <button
+              className={isSaved ? "save-score viewer-save-button active" : "save-score viewer-save-button"}
+              type="button"
+              disabled={isSavePending}
+              onClick={() => onToggleSavedScore(score)}
+              aria-label={isSaved ? "Remove from saved scores" : "Save score"}
+              aria-pressed={isSaved}
+              title={isSaved ? "Remove from saved scores" : "Save score"}
+            >
+              <span aria-hidden="true" />
+            </button>
           ) : null}
-          {xmlUrl ? (
-            <a href={xmlUrl} download={score.upload?.fileName || true}>
-              MusicXML
-            </a>
+          {onDeleteScore ? (
+            <button
+              className="viewer-delete-button"
+              type="button"
+              disabled={isDeleting}
+              onClick={handleDeleteScore}
+              aria-label={isDeleting ? "Deleting score" : "Delete score"}
+              title="Delete score"
+            >
+              <Trash2 aria-hidden="true" size={18} strokeWidth={2} />
+            </button>
           ) : null}
-          {metadataUrl ? (
-            <a href={metadataUrl} download>
-              Metadata
-            </a>
-          ) : null}
+          <ScoreDownloadMenu score={score} />
         </div>
+        {savedScoresError || actionError ? (
+          <p className="viewer-action-error" role="alert">
+            {actionError || savedScoresError}
+          </p>
+        ) : null}
       </section>
 
       <div

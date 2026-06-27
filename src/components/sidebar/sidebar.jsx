@@ -19,6 +19,9 @@ export function Sidebar({
   uploadedScores,
   onHome,
   onSelectScore,
+  onToggleSavedScore,
+  pendingSavedScoreIds,
+  savedScoresError,
 }) {
   const isForgeTab = activeTab === "uploads";
   const isLearnTab = activeTab === "learn";
@@ -57,6 +60,10 @@ export function Sidebar({
           </span>
         </div>
 
+        {!isLearnTab && !isForgeTab && savedScoresError ? (
+          <p className="sidebar-save-error" role="alert">{savedScoresError}</p>
+        ) : null}
+
         {isLearnTab ? (
           <ul className="sidebar-score-list sidebar-activity-list">
             {LEARN_ACTIVITY_PLACEHOLDERS.map((activity) => (
@@ -72,14 +79,37 @@ export function Sidebar({
           <ul className="sidebar-score-list">
             {sidebarScores.map((score) => (
               <li key={score.id}>
-                <button
-                  type="button"
-                  onClick={() => onSelectScore(score)}
-                  aria-label={`Open ${score.songName || "score"} in score viewer`}
-                >
-                  <span>{score.songName || "Untitled score"}</span>
-                  <small>{score.composer || "Unknown composer"}</small>
-                </button>
+                {isForgeTab ? (
+                  <button
+                    type="button"
+                    onClick={() => onSelectScore(score)}
+                    aria-label={`Open ${score.songName || "score"} in score viewer`}
+                  >
+                    <span>{score.songName || "Untitled score"}</span>
+                    <small>{score.composer || "Unknown composer"}</small>
+                  </button>
+                ) : (
+                  <div className="sidebar-saved-score">
+                    <button
+                      className="sidebar-score-open"
+                      type="button"
+                      onClick={() => onSelectScore(score)}
+                      aria-label={`Open ${score.songName || "score"} in score viewer`}
+                    >
+                      <span>{score.songName || "Untitled score"}</span>
+                      <small>{score.composer || "Unknown composer"}</small>
+                    </button>
+                    <button
+                      className="sidebar-unsave-button"
+                      type="button"
+                      disabled={pendingSavedScoreIds.has(score.id)}
+                      onClick={() => onToggleSavedScore(score)}
+                      aria-label={`Remove ${score.songName || "score"} from saved scores`}
+                    >
+                      <span className="sidebar-bookmark-icon" aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

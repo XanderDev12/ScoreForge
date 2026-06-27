@@ -9,11 +9,13 @@ export function getRecommendedScores({ account, excludeScoreIds = [], limit = 6,
   const excludedIds = new Set(excludeScoreIds);
   const preferences = {
     instruments: normalizeList([
-      profile.primaryInstrument,
+      profile.primary_instrument ?? profile.primaryInstrument,
       profile.instruments,
     ]),
-    preferredGenres: normalizeList(profile.preferredGenres),
-    skillLevel: normalizeText(profile.skillLevel),
+    preferredGenres: normalizeList(
+      profile.preferred_genres ?? profile.preferredGenres,
+    ),
+    skillLevel: normalizeText(profile.skill_level ?? profile.skillLevel),
   };
 
   return scores
@@ -35,15 +37,15 @@ function getRecommendationWeight(score, preferences) {
     readNumber(popularity.rating) * 120;
 
   if (matchesPreferredGenre(score, preferences.preferredGenres)) {
-    weight += 600;
+    weight += 3000;
   }
 
   if (matchesInstrument(score, preferences.instruments)) {
-    weight += 400;
+    weight += 5000;
   }
 
   if (matchesSkillLevel(score, preferences.skillLevel)) {
-    weight += 250;
+    weight += 2000;
   }
 
   return weight;
@@ -72,7 +74,16 @@ function matchesInstrument(score, instruments) {
     score.tracks,
   ]);
 
-  return instruments.some((instrument) => scoreInstruments.includes(instrument));
+  return instruments.some((instrument) => {
+    return scoreInstruments.some((scoreInstrument) => {
+      return (
+        scoreInstrument === instrument
+        || scoreInstrument.startsWith(`${instrument} `)
+        || scoreInstrument.startsWith(`${instrument}(`)
+        || (instrument === "voice" && scoreInstrument.endsWith(" voice"))
+      );
+    });
+  });
 }
 
 function matchesSkillLevel(score, skillLevel) {
